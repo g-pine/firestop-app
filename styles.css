@@ -41,7 +41,7 @@ html, body {
 body {
   min-height: 100vh;
   min-height: 100dvh;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
 .topbar {
@@ -85,10 +85,20 @@ body {
 .iconbtn:active { background: var(--panel-2); }
 .iconbtn[hidden] { display: none; }
 
-.topbar-controls {
+.bottombar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--topbar-bg);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
 }
 
 .lang-select {
@@ -98,10 +108,10 @@ body {
   color: var(--text);
   height: 36px;
   border-radius: 10px;
-  padding: 0 8px;
+  padding: 0 10px;
   font-size: 13px;
   font-weight: 600;
-  max-width: 84px;
+  max-width: 160px;
 }
 
 .app {
@@ -312,7 +322,7 @@ body {
 .offline-badge {
   position: fixed;
   left: 50%;
-  bottom: calc(14px + env(safe-area-inset-bottom));
+  bottom: calc(74px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   background: var(--panel-2);
   border: 1px solid var(--border);
