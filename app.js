@@ -8,6 +8,7 @@
   var offlineBadge = document.getElementById("offlineBadge");
 
   var DATA = [];
+  var PRODUCTS = [];
   var stack = []; // [{name, params}]
 
   var FAMILY_ORDER_THROUGH = ["C-AJ", "C-BJ", "W-L", "W-J", "F-A", "F-B", "F-C", "F-E"];
@@ -86,6 +87,7 @@
     html += '<div class="option-grid">';
     html += optionCard("throughHome", { label: "Penetrante a través de muro o losa", sub: "Tubo, cable, ducto, bandeja, múltiple...", count: through.length });
     html += optionCard("jointHome", { label: "Junta perimetral", sub: "Cabeza de muro, piso-muro, piso-piso...", count: joints.length });
+    html += optionCard("materialHome", { label: "¿Para qué sirve este material?", sub: "Confirma en qué sistemas se usa un sellador/producto Hilti", count: PRODUCTS.length });
     html += optionCard("search", { label: "Buscar por código de sistema", sub: "Ej: C-AJ-1575, W-L-1290" });
     html += "</div>";
     html += '<p class="footer-note">Catálogo: Hilti CDN FS Library (May 2019) · ' + DATA.length + " sistemas indexados.</p>";
@@ -93,7 +95,44 @@
 
     bindOptionCard("throughHome", function () { go("family", { kind: "through_penetration" }); });
     bindOptionCard("jointHome", function () { go("family", { kind: "joint" }); });
+    bindOptionCard("materialHome", function () { go("products", {}); });
     bindOptionCard("search", function () { go("search", {}); });
+  };
+
+  screens.products = function () {
+    titleEl.textContent = "Confirmar un material";
+    backBtn.hidden = false;
+
+    var html = '<p class="lead">Elige el producto que tienes a mano. Te muestro en qué sistemas está aprobado para usarse.</p>';
+    html += '<input type="search" class="search-box" id="productSearch" placeholder="Ej: FS-ONE, CP 606, putty...">';
+    html += '<div class="option-grid" id="productList"></div>';
+    appEl.innerHTML = html;
+
+    var listEl = document.getElementById("productList");
+    var searchEl = document.getElementById("productSearch");
+
+    function renderProducts(filterText) {
+      var q = (filterText || "").trim().toUpperCase();
+      var items = PRODUCTS.filter(function (p) {
+        return !q || p.code.indexOf(q) !== -1 || p.label.toUpperCase().indexOf(q) !== -1;
+      });
+      if (!items.length) {
+        listEl.innerHTML = '<div class="empty-state">Sin productos que coincidan con "' + escapeHtml(filterText) + '".</div>';
+        return;
+      }
+      var html = "";
+      items.forEach(function (p) {
+        html += optionCard("prod_" + p.code.replace(/[^A-Z0-9]/gi, "_"), { label: p.code, sub: p.label, count: p.count });
+      });
+      listEl.innerHTML = html;
+      items.forEach(function (p) {
+        var id = "prod_" + p.code.replace(/[^A-Z0-9]/gi, "_");
+        bindOptionCard(id, function () { go("results", { productCode: p.code }); });
+      });
+    }
+
+    renderProducts("");
+    searchEl.addEventListener("input", debounce(function () { renderProducts(searchEl.value); }, 120));
   };
 
   screens.family = function (params) {
@@ -150,12 +189,13 @@
   };
 
   screens.results = function (params) {
-    titleEl.textContent = "Sistemas que calzan";
+    titleEl.textContent = params.productCode ? params.productCode : "Sistemas que calzan";
     backBtn.hidden = false;
 
     var items = DATA.filter(function (s) {
       if (params.familyPrefix && s.family_prefix !== params.familyPrefix) return false;
       if (params.penetrantCode && s.penetrant_code !== params.penetrantCode) return false;
+      if (params.productCode && s.products.indexOf(params.productCode) === -1) return false;
       return true;
     });
 
@@ -164,6 +204,10 @@
     function renderList() {
       var filtered = items.filter(function (s) { return meetsMinRating(s, state.minHr); });
       var html = "";
+      if (params.productCode) {
+        var prod = PRODUCTS.find(function (p) { return p.code === params.productCode; });
+        html += '<p class="lead">' + escapeHtml(prod ? prod.label : "") + " — sistemas donde aparece este producto (" + items.length + ").</p>";
+      }
       html += '<div class="rating-row" id="ratingRow">';
       [0, 1, 2, 3, 4].forEach(function (hr) {
         var label = hr === 0 ? "Cualquier rating" : hr + "-HR mínimo";
@@ -248,12 +292,30 @@
     }
     html += "</div>";
 
+    if (sys.products && sys.products.length) {
+      html += '<div class="section-title">Productos Hilti usados en este sistema</div>';
+      html += '<div class="option-grid">';
+      sys.products.forEach(function (code) {
+        var prod = PRODUCTS.find(function (p) { return p.code === code; });
+        html += optionCard("goprod_" + code.replace(/[^A-Z0-9]/gi, "_"), { label: code, sub: prod ? prod.label : "" });
+      });
+      html += "</div>";
+    }
+
     html += '<div class="section-title">Texto completo de la ficha (OCR del catálogo)</div>';
     html += '<div class="detail-text">' + escapeHtml(sys.text || "") + "</div>";
 
     html += '<p class="page-note">Página aprox. ' + sys.pdf_page + ' del PDF "Hilti CDN FS Library (May 2019)". El diagrama no está incluido en esta versión de la app — revisa el PDF original en Dropbox para ver el dibujo técnico.</p>';
 
     appEl.innerHTML = html;
+
+    if (sys.products && sys.products.length) {
+      sys.products.forEach(function (code) {
+        bindOptionCard("goprod_" + code.replace(/[^A-Z0-9]/gi, "_"), function () {
+          go("results", { productCode: code });
+        });
+      });
+    }
   };
 
   // ---------- render helpers ----------
@@ -315,10 +377,13 @@
   }
 
   // ---------- boot ----------
-  fetch("data/systems.json")
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      DATA = data;
+  Promise.all([
+    fetch("data/systems.json").then(function (r) { return r.json(); }),
+    fetch("data/products.json").then(function (r) { return r.json(); }),
+  ])
+    .then(function (results) {
+      DATA = results[0];
+      PRODUCTS = results[1];
       goHome();
     })
     .catch(function (err) {

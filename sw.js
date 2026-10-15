@@ -1,4 +1,4 @@
-var CACHE_NAME = "firestop-finder-v1";
+var CACHE_NAME = "firestop-finder-v2";
 var ASSETS = [
   "./",
   "index.html",
@@ -6,6 +6,7 @@ var ASSETS = [
   "app.js",
   "manifest.json",
   "data/systems.json",
+  "data/products.json",
   "icons/icon-192.png",
   "icons/icon-512.png",
 ];
