@@ -631,17 +631,31 @@
   populateLangSelect();
   applyStaticLabels();
 
+  var splashEl = document.getElementById("splash");
+  var splashMinTime = new Promise(function (resolve) { setTimeout(resolve, 1600); });
+
+  function hideSplash() {
+    if (!splashEl) return;
+    splashEl.classList.add("hide");
+    setTimeout(function () {
+      if (splashEl.parentNode) splashEl.parentNode.removeChild(splashEl);
+    }, 400);
+  }
+
   Promise.all([
     fetch("data/systems.json").then(function (r) { return r.json(); }),
     fetch("data/products.json").then(function (r) { return r.json(); }),
+    splashMinTime,
   ])
     .then(function (results) {
       DATA = results[0];
       PRODUCTS = results[1];
       goHome();
+      hideSplash();
     })
     .catch(function (err) {
       appEl.innerHTML = '<div class="empty-state">' + escapeHtml(err.message) + "</div>";
+      hideSplash();
     });
 
   window.addEventListener("online", function () { offlineBadge.hidden = true; });
