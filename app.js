@@ -380,15 +380,42 @@
 
     var html = '<button class="btn-capture" id="capBtn">' + escapeHtml(I18N.t("photos_add_button")) + "</button>";
     html += '<div id="captureArea"></div>';
+    html += '<div class="date-filter-row">';
+    html += '<input type="date" id="dateFilter" class="search-box" style="margin-bottom:0;">';
+    html += '<button class="chip" id="clearDateBtn">' + escapeHtml(I18N.t("photos_clear_date")) + "</button>";
+    html += "</div>";
     html += '<div id="photoGrid"></div>';
     appEl.innerHTML = html;
 
+    var dateFilter = document.getElementById("dateFilter");
+    var allPhotos = [];
+
+    function applyFilter() {
+      var val = dateFilter.value;
+      var filtered = allPhotos;
+      if (val) {
+        var parts = val.split("-").map(Number);
+        filtered = allPhotos.filter(function (p) {
+          var d = new Date(p.createdAt);
+          return d.getFullYear() === parts[0] && d.getMonth() + 1 === parts[1] && d.getDate() === parts[2];
+        });
+      }
+      renderPhotoGrid("photoGrid", filtered, { showCode: true, emptyText: I18N.t("photos_gallery_empty"), onChange: reloadPhotos });
+    }
+
     function reloadPhotos() {
       PhotoDB.listAll().then(function (photos) {
-        renderPhotoGrid("photoGrid", photos, { showCode: true, emptyText: I18N.t("photos_gallery_empty"), onChange: reloadPhotos });
+        allPhotos = photos;
+        applyFilter();
       });
     }
     reloadPhotos();
+
+    dateFilter.addEventListener("change", applyFilter);
+    document.getElementById("clearDateBtn").addEventListener("click", function () {
+      dateFilter.value = "";
+      applyFilter();
+    });
 
     document.getElementById("capBtn").addEventListener("click", function () {
       startCapture("captureArea", null, reloadPhotos);
@@ -480,6 +507,15 @@
     });
   }
 
+  function photoTitle(photo) {
+    if (photo.systemCode) return photo.systemCode;
+    if (photo.note && photo.note.trim()) {
+      var n = photo.note.trim();
+      return n.length > 28 ? n.slice(0, 27) + "…" : n;
+    }
+    return I18N.t("photos_no_system");
+  }
+
   function renderPhotoGrid(containerId, photos, opts) {
     var container = document.getElementById(containerId);
     if (!container) return;
@@ -492,7 +528,7 @@
       var url = URL.createObjectURL(p.blob);
       html += '<button class="photo-thumb" data-id="' + p.id + '"><img src="' + url + '">';
       if (opts.showCode) {
-        html += '<span class="code-badge">' + escapeHtml(p.systemCode || I18N.t("photos_no_system")) + "</span>";
+        html += '<span class="code-badge">' + escapeHtml(photoTitle(p)) + "</span>";
       }
       html += "</button>";
     });
@@ -537,10 +573,11 @@
     var overlay = document.createElement("div");
     overlay.className = "lightbox";
     var dateStr = new Date(photo.createdAt).toLocaleString(I18N.getLang());
-    var codeLabel = photo.systemCode || I18N.t("photos_no_system");
+    var titleLabel = photoTitle(photo);
+    var showNoteLine = photo.note && photo.note.trim() && titleLabel !== photo.note.trim();
     overlay.innerHTML =
       '<img src="' + url + '">' +
-      '<div class="meta">' + escapeHtml(codeLabel) + " · " + escapeHtml(dateStr) + (photo.note ? "<br>" + escapeHtml(photo.note) : "") + "</div>" +
+      '<div class="meta">' + escapeHtml(titleLabel) + " · " + escapeHtml(dateStr) + (showNoteLine ? "<br>" + escapeHtml(photo.note) : "") + "</div>" +
       '<div class="actions">' +
       '<button id="lbShare">' + escapeHtml(I18N.t("photos_share")) + "</button>" +
       '<button id="lbDownload">' + escapeHtml(I18N.t("photos_download")) + "</button>" +

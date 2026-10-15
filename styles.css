@@ -180,6 +180,23 @@ body {
 
 .search-box::placeholder { color: var(--text-dim); }
 
+.date-filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.date-filter-row input[type="date"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-filter-row .chip {
+  flex: none;
+  padding: 10px 14px;
+}
+
 .rating-row {
   display: flex;
   gap: 8px;
