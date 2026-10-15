@@ -9,7 +9,22 @@
   --ok: #3ea36b;
   --border: #2a3340;
   --radius: 14px;
+  --topbar-bg: rgba(16, 20, 24, 0.92);
   color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --panel-2: #eceff2;
+  --text: #1a2029;
+  --text-dim: #5b6572;
+  --accent: #d81e2c;
+  --accent-dim: #f6c9cc;
+  --ok: #2f8c56;
+  --border: #dde2e7;
+  --topbar-bg: rgba(244, 245, 247, 0.92);
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -37,7 +52,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
-  background: rgba(16, 20, 24, 0.92);
+  background: var(--topbar-bg);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
@@ -69,6 +84,25 @@ body {
 
 .iconbtn:active { background: var(--panel-2); }
 .iconbtn[hidden] { display: none; }
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lang-select {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  height: 36px;
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 84px;
+}
 
 .app {
   max-width: 640px;

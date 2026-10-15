@@ -5,6 +5,8 @@
   var titleEl = document.getElementById("screenTitle");
   var backBtn = document.getElementById("backBtn");
   var homeBtn = document.getElementById("homeBtn");
+  var themeBtn = document.getElementById("themeBtn");
+  var langSelect = document.getElementById("langSelect");
   var offlineBadge = document.getElementById("offlineBadge");
 
   var DATA = [];
@@ -15,16 +17,14 @@
   var FAMILY_ORDER_JOINT = ["HW-D", "FW-D", "FF-D", "WW-D", "BW-S"];
   var PENETRANT_ORDER = ["1", "2", "5", "3", "4", "7", "6", "8", "0"];
 
-  function byCount(items, getKey, getLabel) {
+  function byCount(items, getKey) {
     var counts = {};
-    var labels = {};
     items.forEach(function (it) {
       var k = getKey(it);
       if (k === null || k === undefined) return;
       counts[k] = (counts[k] || 0) + 1;
-      labels[k] = getLabel(it);
     });
-    return { counts: counts, labels: labels };
+    return counts;
   }
 
   function parseHours(value) {
@@ -49,6 +49,45 @@
     var hours = parseHours(val);
     if (!hours.length) return false;
     return hours.some(function (h) { return h >= minHr; });
+  }
+
+  // ---------- theme & language ----------
+  function applyTheme() {
+    var theme = I18N.getTheme();
+    document.documentElement.setAttribute("data-theme", theme);
+    themeBtn.innerHTML = theme === "light" ? "&#9789;" : "&#9728;";
+    themeBtn.setAttribute("aria-label", I18N.t("theme_toggle_aria"));
+  }
+
+  themeBtn.addEventListener("click", function () {
+    var next = I18N.getTheme() === "light" ? "dark" : "light";
+    I18N.setTheme(next);
+    applyTheme();
+  });
+
+  function populateLangSelect() {
+    langSelect.innerHTML = "";
+    I18N.LANGS.forEach(function (code) {
+      var opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = I18N.LANG_NAMES[code];
+      langSelect.appendChild(opt);
+    });
+    langSelect.value = I18N.getLang();
+  }
+
+  langSelect.addEventListener("change", function () {
+    I18N.setLang(langSelect.value);
+    applyStaticLabels();
+    render();
+  });
+
+  function applyStaticLabels() {
+    document.documentElement.lang = I18N.getLang();
+    backBtn.setAttribute("aria-label", I18N.t("nav_back"));
+    homeBtn.setAttribute("aria-label", I18N.t("nav_home"));
+    offlineBadge.textContent = I18N.t("offline_badge");
+    themeBtn.setAttribute("aria-label", I18N.t("theme_toggle_aria"));
   }
 
   // ---------- navigation ----------
@@ -83,14 +122,14 @@
     var joints = DATA.filter(function (s) { return s.family_kind === "joint"; });
 
     var html = "";
-    html += '<p class="lead">Encuentra el sistema Hilti aprobado para tu ensamblaje. Elige qué estás firestopeando.</p>';
+    html += '<p class="lead">' + escapeHtml(I18N.t("home_lead")) + "</p>";
     html += '<div class="option-grid">';
-    html += optionCard("throughHome", { label: "Penetrante a través de muro o losa", sub: "Tubo, cable, ducto, bandeja, múltiple...", count: through.length });
-    html += optionCard("jointHome", { label: "Junta perimetral", sub: "Cabeza de muro, piso-muro, piso-piso...", count: joints.length });
-    html += optionCard("materialHome", { label: "¿Para qué sirve este material?", sub: "Confirma en qué sistemas se usa un sellador/producto Hilti", count: PRODUCTS.length });
-    html += optionCard("search", { label: "Buscar por código de sistema", sub: "Ej: C-AJ-1575, W-L-1290" });
+    html += optionCard("throughHome", { label: I18N.t("home_through_label"), sub: I18N.t("home_through_sub"), count: through.length });
+    html += optionCard("jointHome", { label: I18N.t("home_joint_label"), sub: I18N.t("home_joint_sub"), count: joints.length });
+    html += optionCard("materialHome", { label: I18N.t("home_material_label"), sub: I18N.t("home_material_sub"), count: PRODUCTS.length });
+    html += optionCard("search", { label: I18N.t("home_search_label"), sub: I18N.t("home_search_sub") });
     html += "</div>";
-    html += '<p class="footer-note">Catálogo: Hilti CDN FS Library (May 2019) · ' + DATA.length + " sistemas indexados.</p>";
+    html += '<p class="footer-note">' + escapeHtml(I18N.t("home_footer", { n: DATA.length })) + "</p>";
     appEl.innerHTML = html;
 
     bindOptionCard("throughHome", function () { go("family", { kind: "through_penetration" }); });
@@ -100,11 +139,11 @@
   };
 
   screens.products = function () {
-    titleEl.textContent = "Confirmar un material";
+    titleEl.textContent = I18N.t("products_title");
     backBtn.hidden = false;
 
-    var html = '<p class="lead">Elige el producto que tienes a mano. Te muestro en qué sistemas está aprobado para usarse.</p>';
-    html += '<input type="search" class="search-box" id="productSearch" placeholder="Ej: FS-ONE, CP 606, putty...">';
+    var html = '<p class="lead">' + escapeHtml(I18N.t("products_lead")) + "</p>";
+    html += '<input type="search" class="search-box" id="productSearch" placeholder="' + escapeHtml(I18N.t("products_placeholder")) + '">';
     html += '<div class="option-grid" id="productList"></div>';
     appEl.innerHTML = html;
 
@@ -114,15 +153,16 @@
     function renderProducts(filterText) {
       var q = (filterText || "").trim().toUpperCase();
       var items = PRODUCTS.filter(function (p) {
-        return !q || p.code.indexOf(q) !== -1 || p.label.toUpperCase().indexOf(q) !== -1;
+        var label = I18N.tProduct(p.code).toUpperCase();
+        return !q || p.code.indexOf(q) !== -1 || label.indexOf(q) !== -1;
       });
       if (!items.length) {
-        listEl.innerHTML = '<div class="empty-state">Sin productos que coincidan con "' + escapeHtml(filterText) + '".</div>';
+        listEl.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.t("products_empty", { q: filterText })) + "</div>";
         return;
       }
       var html = "";
       items.forEach(function (p) {
-        html += optionCard("prod_" + p.code.replace(/[^A-Z0-9]/gi, "_"), { label: p.code, sub: p.label, count: p.count });
+        html += optionCard("prod_" + p.code.replace(/[^A-Z0-9]/gi, "_"), { label: p.code, sub: I18N.tProduct(p.code), count: p.count });
       });
       listEl.innerHTML = html;
       items.forEach(function (p) {
@@ -138,18 +178,18 @@
   screens.family = function (params) {
     var kind = params.kind;
     var isThrough = kind === "through_penetration";
-    titleEl.textContent = isThrough ? "Tipo de muro / losa" : "Tipo de junta";
+    titleEl.textContent = isThrough ? I18N.t("family_title_through") : I18N.t("family_title_joint");
     backBtn.hidden = false;
 
     var items = DATA.filter(function (s) { return s.family_kind === kind; });
-    var agg = byCount(items, function (s) { return s.family_prefix; }, function (s) { return s.family_label; });
+    var counts = byCount(items, function (s) { return s.family_prefix; });
     var order = isThrough ? FAMILY_ORDER_THROUGH : FAMILY_ORDER_JOINT;
-    var keys = order.filter(function (k) { return agg.counts[k]; });
+    var keys = order.filter(function (k) { return counts[k]; });
 
-    var html = '<p class="lead">' + (isThrough ? "¿Qué ensamblaje estás atravesando?" : "¿Qué tipo de junta estás sellando?") + "</p>";
+    var html = '<p class="lead">' + escapeHtml(isThrough ? I18N.t("family_lead_through") : I18N.t("family_lead_joint")) + "</p>";
     html += '<div class="option-grid">';
     keys.forEach(function (k) {
-      html += optionCard("fam_" + k, { label: agg.labels[k], sub: k, count: agg.counts[k] });
+      html += optionCard("fam_" + k, { label: I18N.tFamily(k), sub: k, count: counts[k] });
     });
     html += "</div>";
     appEl.innerHTML = html;
@@ -166,17 +206,17 @@
   };
 
   screens.penetrant = function (params) {
-    titleEl.textContent = "Tipo de penetrante";
+    titleEl.textContent = I18N.t("penetrant_title");
     backBtn.hidden = false;
 
     var items = DATA.filter(function (s) { return s.family_prefix === params.familyPrefix; });
-    var agg = byCount(items, function (s) { return s.penetrant_code; }, function (s) { return s.penetrant_label; });
-    var keys = PENETRANT_ORDER.filter(function (k) { return agg.counts[k]; });
+    var counts = byCount(items, function (s) { return s.penetrant_code; });
+    var keys = PENETRANT_ORDER.filter(function (k) { return counts[k]; });
 
-    var html = '<p class="lead">Ensamblaje: <strong>' + items[0].family_label + "</strong></p>";
+    var html = '<p class="lead">' + escapeHtml(I18N.t("penetrant_lead", { family: I18N.tFamily(params.familyPrefix) })) + "</p>";
     html += '<div class="option-grid">';
     keys.forEach(function (k) {
-      html += optionCard("pen_" + k, { label: agg.labels[k], count: agg.counts[k] });
+      html += optionCard("pen_" + k, { label: I18N.tPenetrant(k), count: counts[k] });
     });
     html += "</div>";
     appEl.innerHTML = html;
@@ -189,7 +229,7 @@
   };
 
   screens.results = function (params) {
-    titleEl.textContent = params.productCode ? params.productCode : "Sistemas que calzan";
+    titleEl.textContent = params.productCode ? params.productCode : I18N.t("results_title_default");
     backBtn.hidden = false;
 
     var items = DATA.filter(function (s) {
@@ -205,18 +245,17 @@
       var filtered = items.filter(function (s) { return meetsMinRating(s, state.minHr); });
       var html = "";
       if (params.productCode) {
-        var prod = PRODUCTS.find(function (p) { return p.code === params.productCode; });
-        html += '<p class="lead">' + escapeHtml(prod ? prod.label : "") + " — sistemas donde aparece este producto (" + items.length + ").</p>";
+        html += '<p class="lead">' + escapeHtml(I18N.t("results_product_lead", { label: I18N.tProduct(params.productCode), n: items.length })) + "</p>";
       }
       html += '<div class="rating-row" id="ratingRow">';
       [0, 1, 2, 3, 4].forEach(function (hr) {
-        var label = hr === 0 ? "Cualquier rating" : hr + "-HR mínimo";
-        html += '<button class="chip" data-hr="' + hr + '" aria-pressed="' + (state.minHr === hr) + '">' + label + "</button>";
+        var label = hr === 0 ? I18N.t("chip_any") : I18N.t("chip_min", { n: hr });
+        html += '<button class="chip" data-hr="' + hr + '" aria-pressed="' + (state.minHr === hr) + '">' + escapeHtml(label) + "</button>";
       });
       html += "</div>";
 
       if (!filtered.length) {
-        html += '<div class="empty-state">No hay sistemas que cumplan ese rating mínimo en esta combinación.<br>Prueba bajando el rating requerido.</div>';
+        html += '<div class="empty-state">' + I18N.t("results_empty") + "</div>";
       } else {
         filtered
           .slice()
@@ -240,10 +279,10 @@
   };
 
   screens.search = function () {
-    titleEl.textContent = "Buscar sistema";
+    titleEl.textContent = I18N.t("search_title");
     backBtn.hidden = false;
 
-    var html = '<input type="search" class="search-box" id="searchInput" placeholder="Código o palabra clave (ej. cobre, PVC, C-AJ-1575)" autofocus>';
+    var html = '<input type="search" class="search-box" id="searchInput" placeholder="' + escapeHtml(I18N.t("search_placeholder")) + '" autofocus>';
     html += '<div id="searchResults"></div>';
     appEl.innerHTML = html;
 
@@ -253,7 +292,7 @@
     function runSearch() {
       var q = input.value.trim().toUpperCase();
       if (q.length < 2) {
-        resultsEl.innerHTML = '<div class="empty-state">Escribe al menos 2 caracteres.</div>';
+        resultsEl.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.t("search_min_chars")) + "</div>";
         return;
       }
       var matches = DATA.filter(function (s) {
@@ -261,7 +300,7 @@
       }).slice(0, 60);
 
       if (!matches.length) {
-        resultsEl.innerHTML = '<div class="empty-state">Sin resultados para "' + escapeHtml(input.value) + '".</div>';
+        resultsEl.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.t("search_empty", { q: input.value })) + "</div>";
         return;
       }
       var html = "";
@@ -288,24 +327,23 @@
         html += '<div class="row"><span class="label">' + escapeHtml(pair[0]) + '</span><span class="value">' + escapeHtml(pair[1]) + "</span></div>";
       });
     } else {
-      html += '<div class="row"><span class="label">Rating</span><span class="value">No especificado</span></div>';
+      html += '<div class="row"><span class="label">Rating</span><span class="value">' + escapeHtml(I18N.t("detail_rating_none")) + "</span></div>";
     }
     html += "</div>";
 
     if (sys.products && sys.products.length) {
-      html += '<div class="section-title">Productos Hilti usados en este sistema</div>';
+      html += '<div class="section-title">' + escapeHtml(I18N.t("detail_section_products")) + "</div>";
       html += '<div class="option-grid">';
       sys.products.forEach(function (code) {
-        var prod = PRODUCTS.find(function (p) { return p.code === code; });
-        html += optionCard("goprod_" + code.replace(/[^A-Z0-9]/gi, "_"), { label: code, sub: prod ? prod.label : "" });
+        html += optionCard("goprod_" + code.replace(/[^A-Z0-9]/gi, "_"), { label: code, sub: I18N.tProduct(code) });
       });
       html += "</div>";
     }
 
-    html += '<div class="section-title">Texto completo de la ficha (OCR del catálogo)</div>';
+    html += '<div class="section-title">' + escapeHtml(I18N.t("detail_section_text")) + "</div>";
     html += '<div class="detail-text">' + escapeHtml(sys.text || "") + "</div>";
 
-    html += '<p class="page-note">Página aprox. ' + sys.pdf_page + ' del PDF "Hilti CDN FS Library (May 2019)". El diagrama no está incluido en esta versión de la app — revisa el PDF original en Dropbox para ver el dibujo técnico.</p>';
+    html += '<p class="page-note">' + escapeHtml(I18N.t("detail_page_note", { page: sys.pdf_page })) + "</p>";
 
     appEl.innerHTML = html;
 
@@ -322,7 +360,7 @@
   function optionCard(id, opts) {
     var html = '<button class="option-card" id="' + id + '">' + escapeHtml(opts.label);
     if (opts.sub) html += '<span class="sub">' + escapeHtml(opts.sub) + "</span>";
-    if (opts.count !== undefined) html += '<span class="count">' + opts.count + " sistema" + (opts.count === 1 ? "" : "s") + "</span>";
+    if (opts.count !== undefined) html += '<span class="count">' + escapeHtml(I18N.t("count_systems", { n: opts.count })) + "</span>";
     html += "</button>";
     return html;
   }
@@ -377,6 +415,10 @@
   }
 
   // ---------- boot ----------
+  applyTheme();
+  populateLangSelect();
+  applyStaticLabels();
+
   Promise.all([
     fetch("data/systems.json").then(function (r) { return r.json(); }),
     fetch("data/products.json").then(function (r) { return r.json(); }),
@@ -387,7 +429,7 @@
       goHome();
     })
     .catch(function (err) {
-      appEl.innerHTML = '<div class="empty-state">No se pudo cargar el catálogo (' + escapeHtml(err.message) + ").</div>";
+      appEl.innerHTML = '<div class="empty-state">' + escapeHtml(err.message) + "</div>";
     });
 
   window.addEventListener("online", function () { offlineBadge.hidden = true; });

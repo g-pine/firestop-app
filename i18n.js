@@ -1,0 +1,383 @@
+var I18N = (function () {
+  "use strict";
+
+  var LANGS = ["es", "en", "fr", "ru", "uk"];
+  var LANG_NAMES = {
+    es: "Español",
+    en: "English",
+    fr: "Français",
+    ru: "Русский",
+    uk: "Українська",
+  };
+
+  var STRINGS = {
+    en: {
+      nav_back: "Back",
+      nav_home: "Home",
+      offline_badge: "Offline — using local data",
+      home_lead: "Find the approved Hilti system for your assembly. Choose what you're firestopping.",
+      home_through_label: "Penetrant through wall or floor",
+      home_through_sub: "Pipe, cable, duct, tray, multiple...",
+      home_joint_label: "Perimeter joint",
+      home_joint_sub: "Top of wall, floor-to-wall, floor-to-floor...",
+      home_material_label: "What is this material for?",
+      home_material_sub: "Confirm which systems use a given Hilti sealant/product",
+      home_search_label: "Search by system code",
+      home_search_sub: "E.g: C-AJ-1575, W-L-1290",
+      home_footer: "Catalog: Hilti CDN FS Library (May 2019) · {n} systems indexed.",
+      count_systems: "{n} systems",
+      family_title_through: "Wall / floor type",
+      family_title_joint: "Joint type",
+      family_lead_through: "What assembly are you penetrating?",
+      family_lead_joint: "What type of joint are you sealing?",
+      penetrant_title: "Penetrant type",
+      penetrant_lead: "Assembly: {family}",
+      results_title_default: "Matching systems",
+      chip_any: "Any rating",
+      chip_min: "{n}-HR minimum",
+      results_empty: "No systems meet that minimum rating for this combination.<br>Try lowering the required rating.",
+      results_product_lead: "{label} — systems where this product appears ({n}).",
+      search_title: "Search system",
+      search_placeholder: "Code or keyword (e.g. copper, PVC, C-AJ-1575)",
+      search_min_chars: "Type at least 2 characters.",
+      search_empty: 'No results for "{q}".',
+      products_title: "Confirm a material",
+      products_lead: "Pick the product you have on hand. I'll show which systems it's approved for.",
+      products_placeholder: "E.g: FS-ONE, CP 606, putty...",
+      products_empty: 'No products match "{q}".',
+      detail_rating_none: "Not specified",
+      detail_section_products: "Hilti products used in this system",
+      detail_section_text: "Full datasheet text (catalog OCR)",
+      detail_page_note: 'Approx. page {page} of the "Hilti CDN FS Library (May 2019)" PDF. The diagram is not included in this version of the app — check the original PDF in Dropbox to see the technical drawing.',
+      lang_label: "Language",
+      theme_light: "Light",
+      theme_dark: "Dark",
+      theme_toggle_aria: "Switch theme",
+    },
+    es: {
+      nav_back: "Volver",
+      nav_home: "Inicio",
+      offline_badge: "Sin conexión — usando datos locales",
+      home_lead: "Encuentra el sistema Hilti aprobado para tu ensamblaje. Elige qué estás firestopeando.",
+      home_through_label: "Penetrante a través de muro o losa",
+      home_through_sub: "Tubo, cable, ducto, bandeja, múltiple...",
+      home_joint_label: "Junta perimetral",
+      home_joint_sub: "Cabeza de muro, piso-muro, piso-piso...",
+      home_material_label: "¿Para qué sirve este material?",
+      home_material_sub: "Confirma en qué sistemas se usa un sellador/producto Hilti",
+      home_search_label: "Buscar por código de sistema",
+      home_search_sub: "Ej: C-AJ-1575, W-L-1290",
+      home_footer: "Catálogo: Hilti CDN FS Library (May 2019) · {n} sistemas indexados.",
+      count_systems: "{n} sistemas",
+      family_title_through: "Tipo de muro / losa",
+      family_title_joint: "Tipo de junta",
+      family_lead_through: "¿Qué ensamblaje estás atravesando?",
+      family_lead_joint: "¿Qué tipo de junta estás sellando?",
+      penetrant_title: "Tipo de penetrante",
+      penetrant_lead: "Ensamblaje: {family}",
+      results_title_default: "Sistemas que calzan",
+      chip_any: "Cualquier rating",
+      chip_min: "{n}-HR mínimo",
+      results_empty: "No hay sistemas que cumplan ese rating mínimo en esta combinación.<br>Prueba bajando el rating requerido.",
+      results_product_lead: "{label} — sistemas donde aparece este producto ({n}).",
+      search_title: "Buscar sistema",
+      search_placeholder: "Código o palabra clave (ej. cobre, PVC, C-AJ-1575)",
+      search_min_chars: "Escribe al menos 2 caracteres.",
+      search_empty: 'Sin resultados para "{q}".',
+      products_title: "Confirmar un material",
+      products_lead: "Elige el producto que tienes a mano. Te muestro en qué sistemas está aprobado para usarse.",
+      products_placeholder: "Ej: FS-ONE, CP 606, putty...",
+      products_empty: 'Sin productos que coincidan con "{q}".',
+      detail_rating_none: "No especificado",
+      detail_section_products: "Productos Hilti usados en este sistema",
+      detail_section_text: "Texto completo de la ficha (OCR del catálogo)",
+      detail_page_note: 'Página aprox. {page} del PDF "Hilti CDN FS Library (May 2019)". El diagrama no está incluido en esta versión de la app — revisa el PDF original en Dropbox para ver el dibujo técnico.',
+      lang_label: "Idioma",
+      theme_light: "Claro",
+      theme_dark: "Oscuro",
+      theme_toggle_aria: "Cambiar tema",
+    },
+    fr: {
+      nav_back: "Retour",
+      nav_home: "Accueil",
+      offline_badge: "Hors ligne — données locales",
+      home_lead: "Trouvez le système Hilti approuvé pour votre assemblage. Choisissez ce que vous coupe-feutez.",
+      home_through_label: "Pénétrant à travers un mur ou un plancher",
+      home_through_sub: "Tuyau, câble, gaine, chemin de câbles, multiple...",
+      home_joint_label: "Joint périphérique",
+      home_joint_sub: "Tête de cloison, plancher-mur, plancher-plancher...",
+      home_material_label: "À quoi sert ce matériau ?",
+      home_material_sub: "Confirmez dans quels systèmes un scellant/produit Hilti est utilisé",
+      home_search_label: "Rechercher par code de système",
+      home_search_sub: "Ex : C-AJ-1575, W-L-1290",
+      home_footer: "Catalogue : Hilti CDN FS Library (mai 2019) · {n} systèmes indexés.",
+      count_systems: "{n} systèmes",
+      family_title_through: "Type de mur / plancher",
+      family_title_joint: "Type de joint",
+      family_lead_through: "Quel assemblage traversez-vous ?",
+      family_lead_joint: "Quel type de joint scellez-vous ?",
+      penetrant_title: "Type de pénétrant",
+      penetrant_lead: "Assemblage : {family}",
+      results_title_default: "Systèmes correspondants",
+      chip_any: "Tout rating",
+      chip_min: "{n}-HR minimum",
+      results_empty: "Aucun système ne répond à ce rating minimum pour cette combinaison.<br>Essayez de baisser le rating requis.",
+      results_product_lead: "{label} — systèmes où ce produit apparaît ({n}).",
+      search_title: "Rechercher un système",
+      search_placeholder: "Code ou mot-clé (ex. cuivre, PVC, C-AJ-1575)",
+      search_min_chars: "Tapez au moins 2 caractères.",
+      search_empty: 'Aucun résultat pour « {q} ».',
+      products_title: "Confirmer un matériau",
+      products_lead: "Choisissez le produit que vous avez sous la main. Je vous montre dans quels systèmes il est approuvé.",
+      products_placeholder: "Ex : FS-ONE, CP 606, putty...",
+      products_empty: 'Aucun produit ne correspond à « {q} ».',
+      detail_rating_none: "Non spécifié",
+      detail_section_products: "Produits Hilti utilisés dans ce système",
+      detail_section_text: "Texte complet de la fiche (OCR du catalogue)",
+      detail_page_note: 'Page approx. {page} du PDF « Hilti CDN FS Library (mai 2019) ». Le schéma n\'est pas inclus dans cette version de l\'app — consultez le PDF original sur Dropbox pour voir le dessin technique.',
+      lang_label: "Langue",
+      theme_light: "Clair",
+      theme_dark: "Sombre",
+      theme_toggle_aria: "Changer de thème",
+    },
+    ru: {
+      nav_back: "Назад",
+      nav_home: "Главная",
+      offline_badge: "Нет сети — используются локальные данные",
+      home_lead: "Найдите одобренную систему Hilti для вашей конструкции. Выберите, что вы герметизируете.",
+      home_through_label: "Проходка через стену или перекрытие",
+      home_through_sub: "Труба, кабель, воздуховод, лоток, несколько проходок...",
+      home_joint_label: "Периметральный шов",
+      home_joint_sub: "По верху стены, пол-стена, пол-пол...",
+      home_material_label: "Для чего нужен этот материал?",
+      home_material_sub: "Узнайте, в каких системах используется герметик/материал Hilti",
+      home_search_label: "Поиск по коду системы",
+      home_search_sub: "Напр.: C-AJ-1575, W-L-1290",
+      home_footer: "Каталог: Hilti CDN FS Library (май 2019) · {n} систем в базе.",
+      count_systems: "{n} систем",
+      family_title_through: "Тип стены / перекрытия",
+      family_title_joint: "Тип шва",
+      family_lead_through: "Какую конструкцию вы пересекаете?",
+      family_lead_joint: "Какой тип шва вы герметизируете?",
+      penetrant_title: "Тип проходки",
+      penetrant_lead: "Конструкция: {family}",
+      results_title_default: "Подходящие системы",
+      chip_any: "Любой предел",
+      chip_min: "Мин. {n} ч",
+      results_empty: "Нет систем с таким минимальным пределом огнестойкости для этой комбинации.<br>Попробуйте снизить требуемый предел.",
+      results_product_lead: "{label} — системы, где используется этот материал ({n}).",
+      search_title: "Поиск системы",
+      search_placeholder: "Код или ключевое слово (напр. медь, ПВХ, C-AJ-1575)",
+      search_min_chars: "Введите минимум 2 символа.",
+      search_empty: "Нет результатов по запросу «{q}».",
+      products_title: "Проверить материал",
+      products_lead: "Выберите материал, который у вас есть под рукой. Покажу, в каких системах он одобрен.",
+      products_placeholder: "Напр.: FS-ONE, CP 606, putty...",
+      products_empty: "Нет материалов по запросу «{q}».",
+      detail_rating_none: "Не указано",
+      detail_section_products: "Материалы Hilti, используемые в этой системе",
+      detail_section_text: "Полный текст карточки (OCR каталога)",
+      detail_page_note: "Прибл. страница {page} PDF «Hilti CDN FS Library (май 2019)». Схема не включена в эту версию приложения — посмотрите оригинальный PDF в Dropbox, чтобы увидеть технический чертёж.",
+      lang_label: "Язык",
+      theme_light: "Светлая",
+      theme_dark: "Тёмная",
+      theme_toggle_aria: "Сменить тему",
+    },
+    uk: {
+      nav_back: "Назад",
+      nav_home: "Головна",
+      offline_badge: "Немає мережі — використовуються локальні дані",
+      home_lead: "Знайдіть схвалену систему Hilti для вашої конструкції. Оберіть, що ви вогнезахищаєте.",
+      home_through_label: "Проходка через стіну або перекриття",
+      home_through_sub: "Труба, кабель, повітропровід, лоток, кілька проходок...",
+      home_joint_label: "Периметральний шов",
+      home_joint_sub: "По верху стіни, підлога-стіна, підлога-підлога...",
+      home_material_label: "Для чого потрібен цей матеріал?",
+      home_material_sub: "Дізнайтеся, в яких системах використовується герметик/матеріал Hilti",
+      home_search_label: "Пошук за кодом системи",
+      home_search_sub: "Напр.: C-AJ-1575, W-L-1290",
+      home_footer: "Каталог: Hilti CDN FS Library (травень 2019) · {n} систем у базі.",
+      count_systems: "{n} систем",
+      family_title_through: "Тип стіни / перекриття",
+      family_title_joint: "Тип шва",
+      family_lead_through: "Яку конструкцію ви перетинаєте?",
+      family_lead_joint: "Який тип шва ви герметизуєте?",
+      penetrant_title: "Тип проходки",
+      penetrant_lead: "Конструкція: {family}",
+      results_title_default: "Відповідні системи",
+      chip_any: "Будь-яка межа",
+      chip_min: "Мін. {n} год",
+      results_empty: "Немає систем із такою мінімальною межею вогнестійкості для цієї комбінації.<br>Спробуйте знизити потрібну межу.",
+      results_product_lead: "{label} — системи, де використовується цей матеріал ({n}).",
+      search_title: "Пошук системи",
+      search_placeholder: "Код або ключове слово (напр. мідь, ПВХ, C-AJ-1575)",
+      search_min_chars: "Введіть щонайменше 2 символи.",
+      search_empty: "Немає результатів за запитом «{q}».",
+      products_title: "Перевірити матеріал",
+      products_lead: "Оберіть матеріал, який у вас під рукою. Покажу, в яких системах він схвалений.",
+      products_placeholder: "Напр.: FS-ONE, CP 606, putty...",
+      products_empty: "Немає матеріалів за запитом «{q}».",
+      detail_rating_none: "Не вказано",
+      detail_section_products: "Матеріали Hilti, використані в цій системі",
+      detail_section_text: "Повний текст картки (OCR каталогу)",
+      detail_page_note: "Прибл. сторінка {page} PDF «Hilti CDN FS Library (травень 2019)». Схему не включено в цю версію застосунку — перегляньте оригінальний PDF у Dropbox, щоб побачити технічне креслення.",
+      lang_label: "Мова",
+      theme_light: "Світла",
+      theme_dark: "Темна",
+      theme_toggle_aria: "Змінити тему",
+    },
+  };
+
+  var FAMILY = {
+    "C-AJ": { en: "Concrete/block wall or floor", es: "Hormigón / bloque — pared o losa", fr: "Mur ou dalle en béton/bloc", ru: "Бетон/блок — стена или перекрытие", uk: "Бетон/блок — стіна або перекриття" },
+    "C-BJ": { en: "Concrete block wall or floor", es: "Bloque de hormigón — pared o losa", fr: "Mur ou dalle en bloc de béton", ru: "Бетонный блок — стена или перекрытие", uk: "Бетонний блок — стіна або перекриття" },
+    "W-L": { en: "Gypsum wall (W-L)", es: "Muro de gypsum (W-L)", fr: "Cloison en gypse (W-L)", ru: "Гипсовая стена (W-L)", uk: "Гіпсова стіна (W-L)" },
+    "W-J": { en: "Gypsum wall (W-J)", es: "Muro de gypsum (W-J)", fr: "Cloison en gypse (W-J)", ru: "Гипсовая стена (W-J)", uk: "Гіпсова стіна (W-J)" },
+    "F-A": { en: "Concrete floor (F-A)", es: "Losa de hormigón (F-A)", fr: "Dalle en béton (F-A)", ru: "Бетонное перекрытие (F-A)", uk: "Бетонне перекриття (F-A)" },
+    "F-B": { en: "Concrete/other floor (F-B)", es: "Losa de hormigón / otra (F-B)", fr: "Dalle en béton / autre (F-B)", ru: "Бетонное/другое перекрытие (F-B)", uk: "Бетонне/інше перекриття (F-B)" },
+    "F-C": { en: "Wood floor (F-C)", es: "Piso de madera (F-C)", fr: "Plancher en bois (F-C)", ru: "Деревянный пол (F-C)", uk: "Дерев'яна підлога (F-C)" },
+    "F-E": { en: "Floor — other type (F-E)", es: "Losa — otro tipo (F-E)", fr: "Dalle — autre type (F-E)", ru: "Перекрытие — другой тип (F-E)", uk: "Перекриття — інший тип (F-E)" },
+    "HW-D": { en: "Top of wall joint", es: "Junta cabeza de muro (top of wall)", fr: "Joint en tête de cloison (top of wall)", ru: "Шов по верху стены (top of wall)", uk: "Шов по верху стіни (top of wall)" },
+    "FW-D": { en: "Floor-to-wall joint", es: "Junta piso-muro (floor-to-wall)", fr: "Joint plancher-mur (floor-to-wall)", ru: "Шов пол-стена (floor-to-wall)", uk: "Шов підлога-стіна (floor-to-wall)" },
+    "FF-D": { en: "Floor-to-floor joint", es: "Junta piso-piso (floor-to-floor)", fr: "Joint plancher-plancher (floor-to-floor)", ru: "Шов пол-пол (floor-to-floor)", uk: "Шов підлога-підлога (floor-to-floor)" },
+    "WW-D": { en: "Wall-to-wall joint", es: "Junta muro-muro (wall-to-wall)", fr: "Joint mur-mur (wall-to-wall)", ru: "Шов стена-стена (wall-to-wall)", uk: "Шов стіна-стіна (wall-to-wall)" },
+    "BW-S": { en: "Bottom of wall / safing joint", es: "Junta base de muro / safing", fr: "Joint en pied de cloison / safing", ru: "Шов по низу стены / safing", uk: "Шов по низу стіни / safing" },
+  };
+
+  var PENETRANT = {
+    "0": { en: "Blank opening (no penetrant)", es: "Blank opening (sin penetrante)", fr: "Ouverture vide (sans pénétrant)", ru: "Пустой проём (без проходки)", uk: "Порожній отвір (без проходки)" },
+    "1": { en: "Metal pipe", es: "Tubo metálico", fr: "Tuyau métallique", ru: "Металлическая труба", uk: "Металева труба" },
+    "2": { en: "Plastic pipe", es: "Tubo plástico", fr: "Tuyau en plastique", ru: "Пластиковая труба", uk: "Пластикова труба" },
+    "3": { en: "Cable / cable bundle", es: "Cable / bundle de cables", fr: "Câble / faisceau de câbles", ru: "Кабель / пучок кабелей", uk: "Кабель / пучок кабелів" },
+    "4": { en: "Cable tray", es: "Bandeja de cables (cable tray)", fr: "Chemin de câbles", ru: "Кабельный лоток", uk: "Кабельний лоток" },
+    "5": { en: "Insulated metal pipe", es: "Tubo metálico con aislación", fr: "Tuyau métallique isolé", ru: "Изолированная металлическая труба", uk: "Ізольована металева труба" },
+    "6": { en: "Bus duct / electrical", es: "Bus duct / eléctrico", fr: "Goulotte électrique (bus duct)", ru: "Шинопровод / электрика", uk: "Шинопровід / електрика" },
+    "7": { en: "Sheet metal duct", es: "Ducto de lámina metálica", fr: "Gaine en tôle", ru: "Металлический воздуховод", uk: "Металевий повітропровід" },
+    "8": { en: "Multiple penetrants", es: "Múltiples penetrantes", fr: "Pénétrants multiples", ru: "Несколько проходок", uk: "Декілька проходок" },
+  };
+
+  var PRODUCT = {
+    "FS-ONE": { en: "Intumescent firestop sealant (FS-ONE)", es: "Sellador intumescente (FS-ONE)", fr: "Scellant coupe-feu intumescent (FS-ONE)", ru: "Вспучивающийся огнестойкий герметик (FS-ONE)", uk: "Спучувальний вогнестійкий герметик (FS-ONE)" },
+    "FS-ONE MAX": { en: "Intumescent firestop sealant (FS-ONE MAX)", es: "Sellador intumescente (FS-ONE MAX)", fr: "Scellant coupe-feu intumescent (FS-ONE MAX)", ru: "Вспучивающийся огнестойкий герметик (FS-ONE MAX)", uk: "Спучувальний вогнестійкий герметик (FS-ONE MAX)" },
+    "CP 680-M": { en: "Cast-in device for metal deck (CP 680-M)", es: "Dispositivo cast-in para metal deck (CP 680-M)", fr: "Dispositif noyé pour bac acier (CP 680-M)", ru: "Закладное устройство для профнастила (CP 680-M)", uk: "Закладний пристрій для профнастилу (CP 680-M)" },
+    "CP 680-P": { en: "Cast-in device for precast floor (CP 680-P)", es: "Dispositivo cast-in para losa precast (CP 680-P)", fr: "Dispositif noyé pour dalle préfabriquée (CP 680-P)", ru: "Закладное устройство для сборного перекрытия (CP 680-P)", uk: "Закладний пристрій для збірного перекриття (CP 680-P)" },
+    "CP 680N": { en: "Cast-in device (CP 680N)", es: "Dispositivo cast-in (CP 680N)", fr: "Dispositif noyé (CP 680N)", ru: "Закладное устройство (CP 680N)", uk: "Закладний пристрій (CP 680N)" },
+    "CP 601S": { en: "Elastomeric firestop sealant (CP 601S)", es: "Sellador elastomérico (CP 601S)", fr: "Scellant coupe-feu élastomère (CP 601S)", ru: "Эластомерный огнестойкий герметик (CP 601S)", uk: "Еластомерний вогнестійкий герметик (CP 601S)" },
+    "CP 606": { en: "Flexible firestop sealant (CP 606)", es: "Sellador flexible (CP 606)", fr: "Scellant coupe-feu flexible (CP 606)", ru: "Гибкий огнестойкий герметик (CP 606)", uk: "Гнучкий вогнестійкий герметик (CP 606)" },
+    "CP 604": { en: "Self-leveling firestop sealant (CP 604)", es: "Sellador autonivelante (CP 604)", fr: "Scellant coupe-feu autonivelant (CP 604)", ru: "Самовыравнивающийся огнестойкий герметик (CP 604)", uk: "Самовирівнювальний вогнестійкий герметик (CP 604)" },
+    "CP 617": { en: "Firestop putty (CP 617)", es: "Masilla / putty (CP 617)", fr: "Mastic coupe-feu (putty) (CP 617)", ru: "Огнестойкая паста (путти) (CP 617)", uk: "Вогнестійка паста (путті) (CP 617)" },
+    "CP 619T": { en: "Firestop putty roll (CP 619T)", es: "Masilla / putty en rollo (CP 619T)", fr: "Mastic coupe-feu en rouleau (CP 619T)", ru: "Огнестойкая паста в рулоне (CP 619T)", uk: "Вогнестійка паста в рулоні (CP 619T)" },
+    "CP 618": { en: "Firestop putty stick (CP 618)", es: "Masilla / putty en barra (CP 618)", fr: "Mastic coupe-feu en bâtonnet (CP 618)", ru: "Огнестойкая паста в брикете (CP 618)", uk: "Вогнестійка паста в брикеті (CP 618)" },
+    "CP 620": { en: "Firestop foam (CP 620)", es: "Espuma firestop (CP 620)", fr: "Mousse coupe-feu (CP 620)", ru: "Огнестойкая монтажная пена (CP 620)", uk: "Вогнестійка монтажна піна (CP 620)" },
+    "CP 643N": { en: "Firestop collar (CP 643N)", es: "Collar / banda intumescente (CP 643N)", fr: "Collier coupe-feu (CP 643N)", ru: "Противопожарный хомут (CP 643N)", uk: "Протипожежний хомут (CP 643N)" },
+    "CP 648E": { en: "Firestop wrap strip (CP 648E)", es: "Wrap strip (CP 648E)", fr: "Bande d'enroulement coupe-feu (CP 648E)", ru: "Огнестойкая обёрточная лента (CP 648E)", uk: "Вогнестійка обгорткова стрічка (CP 648E)" },
+    "CP 653": { en: "Firestop speed sleeve (CP 653)", es: "Speed sleeve (CP 653)", fr: "Manchon rapide coupe-feu (CP 653)", ru: "Быстроустанавливаемая огнестойкая гильза (CP 653)", uk: "Швидкомонтована вогнестійка гільза (CP 653)" },
+    "CP 658T": { en: "Firestop plug (CP 658T)", es: "Tapón / plug (CP 658T)", fr: "Bouchon coupe-feu (CP 658T)", ru: "Огнезащитная заглушка (CP 658T)", uk: "Вогнезахисна заглушка (CP 658T)" },
+    "CP 672": { en: "Firestop speed spray (CP 672)", es: "Speed spray (CP 672)", fr: "Spray coupe-feu rapide (CP 672)", ru: "Огнезащитный быстрый спрей (CP 672)", uk: "Вогнезахисний швидкий спрей (CP 672)" },
+    "CP 675T": { en: "Firestop board (CP 675T)", es: "Placa / board firestop (CP 675T)", fr: "Panneau coupe-feu (CP 675T)", ru: "Огнестойкая плита (CP 675T)", uk: "Вогнестійка плита (CP 675T)" },
+    "CP 681": { en: "Cast-in device (CP 681)", es: "Dispositivo cast-in (CP 681)", fr: "Dispositif noyé (CP 681)", ru: "Закладное устройство (CP 681)", uk: "Закладний пристрій (CP 681)" },
+    "CP 682": { en: "Cast-in device (CP 682)", es: "Dispositivo cast-in (CP 682)", fr: "Dispositif noyé (CP 682)", ru: "Закладное устройство (CP 682)", uk: "Закладний пристрій (CP 682)" },
+    "CP 767": { en: "Firestop speed strips (CP 767)", es: "Speed strips (CP 767)", fr: "Bandes rapides coupe-feu (CP 767)", ru: "Быстрые огнестойкие полосы (CP 767)", uk: "Швидкі вогнестійкі смуги (CP 767)" },
+    "CP 777": { en: "Firestop speed plugs (CP 777)", es: "Speed plugs (CP 777)", fr: "Bouchons rapides coupe-feu (CP 777)", ru: "Быстрые огнезащитные заглушки (CP 777)", uk: "Швидкі вогнезахисні заглушки (CP 777)" },
+    "CFS-PL": { en: "Firestop plug (CFS-PL)", es: "Tapón / plug firestop (CFS-PL)", fr: "Bouchon coupe-feu (CFS-PL)", ru: "Огнезащитная заглушка (CFS-PL)", uk: "Вогнезахисна заглушка (CFS-PL)" },
+    "CFS-BL": { en: "Firestop block (CFS-BL)", es: "Bloque firestop (CFS-BL)", fr: "Bloc coupe-feu (CFS-BL)", ru: "Огнестойкий блок (CFS-BL)", uk: "Вогнестійкий блок (CFS-BL)" },
+    "CFS-SP WB": { en: "Water-based firestop joint sealant (CFS-SP WB)", es: "Sellador de junta a base de agua (CFS-SP WB)", fr: "Scellant de joint coupe-feu à base d'eau (CFS-SP WB)", ru: "Герметик для шва на водной основе (CFS-SP WB)", uk: "Герметик для шва на водній основі (CFS-SP WB)" },
+    "CFS-S SIL GG": { en: "Firestop silicone sealant (CFS-S SIL GG)", es: "Sellador de silicona (CFS-S SIL GG)", fr: "Scellant silicone coupe-feu (CFS-S SIL GG)", ru: "Силиконовый огнестойкий герметик (CFS-S SIL GG)", uk: "Силіконовий вогнестійкий герметик (CFS-S SIL GG)" },
+    "CFS-S SIL SL": { en: "Self-leveling firestop silicone sealant (CFS-S SIL SL)", es: "Sellador de silicona autonivelante (CFS-S SIL SL)", fr: "Scellant silicone coupe-feu autonivelant (CFS-S SIL SL)", ru: "Самовыравнивающийся силиконовый герметик (CFS-S SIL SL)", uk: "Самовирівнювальний силіконовий герметик (CFS-S SIL SL)" },
+    "CFS-SL SK": { en: "Firestop sleeve kit (CFS-SL SK)", es: "Kit de manguito / sleeve (CFS-SL SK)", fr: "Kit de manchon coupe-feu (CFS-SL SK)", ru: "Комплект огнестойкой гильзы (CFS-SL SK)", uk: "Комплект вогнестійкої гільзи (CFS-SL SK)" },
+    "CFS-SL RK": { en: "Firestop retrofit sleeve kit (CFS-SL RK)", es: "Kit retroadaptable (CFS-SL RK)", fr: "Kit de manchon coupe-feu rétrofit (CFS-SL RK)", ru: "Комплект гильзы для ретрофита (CFS-SL RK)", uk: "Комплект гільзи для ретрофіту (CFS-SL RK)" },
+    "CFS-DID": { en: "Firestop drop-in device (CFS-DID)", es: "Dispositivo drop-in (CFS-DID)", fr: "Dispositif coupe-feu à insérer (CFS-DID)", ru: "Вставное огнезащитное устройство (CFS-DID)", uk: "Вставний вогнезахисний пристрій (CFS-DID)" },
+    "CF-AS": { en: "Firestop CJP sealant (CF-AS)", es: "Sello cortafuego CJP (CF-AS)", fr: "Joint coupe-feu CJP (CF-AS)", ru: "Противопожарное уплотнение CJP (CF-AS)", uk: "Протипожежне ущільнення CJP (CF-AS)" },
+    "CF 812": { en: "Firestop filler foam (CF 812)", es: "Espuma de relleno (CF 812)", fr: "Mousse de remplissage coupe-feu (CF 812)", ru: "Монтажная огнезащитная пена-заполнитель (CF 812)", uk: "Монтажна вогнезахисна піна-заповнювач (CF 812)" },
+  };
+
+  var LANG_KEY = "firestop-lang";
+  var THEME_KEY = "firestop-theme";
+
+  function detectLang() {
+    try {
+      var nav = (navigator.language || "en").slice(0, 2).toLowerCase();
+      if (LANGS.indexOf(nav) !== -1) return nav;
+    } catch (e) {}
+    return "es";
+  }
+
+  function getLang() {
+    try {
+      var saved = localStorage.getItem(LANG_KEY);
+      if (saved && LANGS.indexOf(saved) !== -1) return saved;
+    } catch (e) {}
+    return detectLang();
+  }
+
+  function setLang(l) {
+    try { localStorage.setItem(LANG_KEY, l); } catch (e) {}
+  }
+
+  function detectTheme() {
+    try {
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) return "light";
+    } catch (e) {}
+    return "dark";
+  }
+
+  function getTheme() {
+    try {
+      var saved = localStorage.getItem(THEME_KEY);
+      if (saved === "light" || saved === "dark") return saved;
+    } catch (e) {}
+    return detectTheme();
+  }
+
+  function setTheme(t) {
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+  }
+
+  function fmt(str, params) {
+    if (!params) return str;
+    return str.replace(/\{(\w+)\}/g, function (_, k) {
+      return params[k] !== undefined ? params[k] : "{" + k + "}";
+    });
+  }
+
+  function t(key, params) {
+    var lang = getLang();
+    var dict = STRINGS[lang] || STRINGS.en;
+    var str = dict[key] !== undefined ? dict[key] : STRINGS.en[key] !== undefined ? STRINGS.en[key] : key;
+    return fmt(str, params);
+  }
+
+  function tFamily(prefix) {
+    var lang = getLang();
+    var entry = FAMILY[prefix];
+    if (!entry) return prefix;
+    return entry[lang] || entry.en;
+  }
+
+  function tPenetrant(code) {
+    var lang = getLang();
+    var entry = PENETRANT[code];
+    if (!entry) return code;
+    return entry[lang] || entry.en;
+  }
+
+  function tProduct(code) {
+    var lang = getLang();
+    var entry = PRODUCT[code];
+    if (!entry) return code;
+    return entry[lang] || entry.en;
+  }
+
+  return {
+    LANGS: LANGS,
+    LANG_NAMES: LANG_NAMES,
+    getLang: getLang,
+    setLang: setLang,
+    getTheme: getTheme,
+    setTheme: setTheme,
+    t: t,
+    tFamily: tFamily,
+    tPenetrant: tPenetrant,
+    tProduct: tProduct,
+  };
+})();
