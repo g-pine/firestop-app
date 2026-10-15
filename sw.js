@@ -1,4 +1,4 @@
-var CACHE_NAME = "firestop-finder-v7";
+var CACHE_NAME = "firestop-finder-v10";
 
 // Data/icons: large or rarely-changing, safe to precache at install and
 // serve cache-first (with background revalidation).
@@ -21,9 +21,18 @@ function isShellRequest(request) {
 }
 
 self.addEventListener("install", function (event) {
+  // Fetch each asset with cache:"reload" so install always talks to the
+  // network, never reusing a stale entry from the browser's own HTTP cache
+  // (cache.addAll's default fetch can otherwise bake in an old file).
   event.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
-      return cache.addAll(DATA_ASSETS);
+      return Promise.all(
+        DATA_ASSETS.map(function (url) {
+          return fetch(url, { cache: "reload" }).then(function (response) {
+            if (response && response.ok) return cache.put(url, response);
+          });
+        })
+      );
     })
   );
   self.skipWaiting();
@@ -46,7 +55,7 @@ self.addEventListener("fetch", function (event) {
 
   if (isShellRequest(request)) {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: "no-store" })
         .then(function (response) {
           if (response && response.ok) {
             var copy = response.clone();
@@ -61,7 +70,7 @@ self.addEventListener("fetch", function (event) {
 
   event.respondWith(
     caches.match(request).then(function (cached) {
-      var network = fetch(request)
+      var network = fetch(request, { cache: "reload" })
         .then(function (response) {
           if (response && response.ok) {
             var copy = response.clone();

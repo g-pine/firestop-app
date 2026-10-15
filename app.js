@@ -122,6 +122,7 @@
     var joints = DATA.filter(function (s) { return s.family_kind === "joint"; });
 
     var html = "";
+    html += '<img class="home-logo" src="icons/icon-512.png" alt="Firestop Finder" width="96" height="96">';
     html += '<p class="lead">' + escapeHtml(I18N.t("home_lead")) + "</p>";
     html += '<div class="option-grid">';
     html += optionCard("throughHome", { label: I18N.t("home_through_label"), sub: I18N.t("home_through_sub"), count: through.length });

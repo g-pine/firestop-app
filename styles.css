@@ -120,6 +120,15 @@ body {
   padding: 16px 14px 40px;
 }
 
+.home-logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 4px auto 18px;
+  border-radius: 22px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
 .lead {
   color: var(--text-dim);
   font-size: 14px;
