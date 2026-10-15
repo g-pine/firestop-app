@@ -1,13 +1,12 @@
-var CACHE_NAME = "firestop-finder-v8";
+var CACHE_NAME = "firestop-finder-v7";
 
-// Data/icons/vendor libs: large or rarely-changing, safe to precache at
-// install and serve cache-first (with background revalidation).
+// Data/icons: large or rarely-changing, safe to precache at install and
+// serve cache-first (with background revalidation).
 var DATA_ASSETS = [
   "data/systems.json",
   "data/products.json",
   "icons/icon-192.png",
   "icons/icon-512.png",
-  "vendor/zxing.min.js",
 ];
 
 // App shell: always served network-first (falling back to cache only when

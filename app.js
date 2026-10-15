@@ -91,30 +91,18 @@
   }
 
   // ---------- navigation ----------
-  var activeCodeReader = null;
-
-  function stopScanner() {
-    if (activeCodeReader) {
-      try { activeCodeReader.reset(); } catch (e) {}
-      activeCodeReader = null;
-    }
-  }
-
   function go(name, params) {
-    stopScanner();
     stack.push({ name: name, params: params || {} });
     render();
   }
 
   function goHome() {
-    stopScanner();
     stack = [{ name: "home", params: {} }];
     render();
   }
 
   function goBack() {
     if (stack.length > 1) {
-      stopScanner();
       stack.pop();
       render();
     }
@@ -139,7 +127,6 @@
     html += optionCard("throughHome", { label: I18N.t("home_through_label"), sub: I18N.t("home_through_sub"), count: through.length });
     html += optionCard("jointHome", { label: I18N.t("home_joint_label"), sub: I18N.t("home_joint_sub"), count: joints.length });
     html += optionCard("materialHome", { label: I18N.t("home_material_label"), sub: I18N.t("home_material_sub"), count: PRODUCTS.length });
-    html += optionCard("scanHome", { label: I18N.t("home_scan_label"), sub: I18N.t("home_scan_sub") });
     html += optionCard("search", { label: I18N.t("home_search_label"), sub: I18N.t("home_search_sub") });
     html += optionCard("photosHome", { label: I18N.t("home_photos_label"), sub: I18N.t("home_photos_sub") });
     html += "</div>";
@@ -149,7 +136,6 @@
     bindOptionCard("throughHome", function () { go("family", { kind: "through_penetration" }); });
     bindOptionCard("jointHome", function () { go("family", { kind: "joint" }); });
     bindOptionCard("materialHome", function () { go("products", {}); });
-    bindOptionCard("scanHome", function () { go("scan", {}); });
     bindOptionCard("search", function () { go("search", {}); });
     bindOptionCard("photosHome", function () { go("photos", {}); });
   };
@@ -434,102 +420,6 @@
     document.getElementById("capBtn").addEventListener("click", function () {
       startCapture("captureArea", null, reloadPhotos);
     });
-  };
-
-  screens.scan = function () {
-    titleEl.textContent = I18N.t("scan_title");
-    backBtn.hidden = false;
-
-    var html = '<p class="lead">' + escapeHtml(I18N.t("scan_hint")) + "</p>";
-    html += '<div class="scan-video-wrap"><video id="scanVideo" playsinline autoplay muted></video></div>';
-    html += '<div id="scanError" class="empty-state" hidden></div>';
-    html += '<button class="btn-capture" id="scanCancelBtn">' + escapeHtml(I18N.t("scan_cancel")) + "</button>";
-    html += '<div class="section-title">' + escapeHtml(I18N.t("scan_manual_label")) + "</div>";
-    html += '<input type="text" class="search-box" id="manualCodeInput" placeholder="' + escapeHtml(I18N.t("scan_manual_placeholder")) + '">';
-    html += '<button class="btn-capture" id="manualCodeBtn">' + escapeHtml(I18N.t("scan_manual_button")) + "</button>";
-    appEl.innerHTML = html;
-
-    document.getElementById("scanCancelBtn").addEventListener("click", goBack);
-    document.getElementById("manualCodeBtn").addEventListener("click", function () {
-      var val = document.getElementById("manualCodeInput").value.trim();
-      if (val) {
-        stopScanner();
-        resolveScannedCode(val);
-      }
-    });
-
-    if (!window.ZXing) {
-      var errEl0 = document.getElementById("scanError");
-      errEl0.hidden = false;
-      errEl0.textContent = I18N.t("scan_no_camera");
-      return;
-    }
-
-    var codeReader = new ZXing.BrowserMultiFormatReader();
-    activeCodeReader = codeReader;
-
-    codeReader
-      .decodeFromConstraints({ audio: false, video: { facingMode: "environment" } }, "scanVideo", function (result) {
-        if (result) {
-          var text = result.getText();
-          stopScanner();
-          resolveScannedCode(text);
-        }
-      })
-      .catch(function () {
-        var errEl = document.getElementById("scanError");
-        if (errEl) {
-          errEl.hidden = false;
-          errEl.textContent = I18N.t("scan_permission_error");
-        }
-      });
-  };
-
-  function resolveScannedCode(code) {
-    BarcodeDB.getProduct(code).then(function (productCode) {
-      if (productCode) {
-        go("results", { productCode: productCode });
-      } else {
-        go("scanAssign", { code: code });
-      }
-    });
-  }
-
-  screens.scanAssign = function (params) {
-    titleEl.textContent = I18N.t("scan_assign_title");
-    backBtn.hidden = false;
-
-    var html = '<p class="lead">' + escapeHtml(I18N.t("scan_assign_lead", { code: params.code })) + "</p>";
-    html += '<input type="search" class="search-box" id="productSearch" placeholder="' + escapeHtml(I18N.t("products_placeholder")) + '">';
-    html += '<div class="option-grid" id="productList"></div>';
-    appEl.innerHTML = html;
-
-    var listEl = document.getElementById("productList");
-    var searchEl = document.getElementById("productSearch");
-
-    function renderAssignList(filterText) {
-      var q = (filterText || "").trim().toUpperCase();
-      var items = PRODUCTS.filter(function (p) {
-        var label = I18N.tProduct(p.code).toUpperCase();
-        return !q || p.code.indexOf(q) !== -1 || label.indexOf(q) !== -1;
-      });
-      var listHtml = "";
-      items.forEach(function (p) {
-        listHtml += optionCard("assignprod_" + p.code.replace(/[^A-Z0-9]/gi, "_"), { label: p.code, sub: I18N.tProduct(p.code) });
-      });
-      listEl.innerHTML = listHtml;
-      items.forEach(function (p) {
-        var id = "assignprod_" + p.code.replace(/[^A-Z0-9]/gi, "_");
-        bindOptionCard(id, function () {
-          BarcodeDB.setProduct(params.code, p.code).then(function () {
-            go("results", { productCode: p.code });
-          });
-        });
-      });
-    }
-
-    renderAssignList("");
-    searchEl.addEventListener("input", debounce(function () { renderAssignList(searchEl.value); }, 120));
   };
 
   // ---------- render helpers ----------
