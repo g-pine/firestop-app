@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Firestop Finder</title>
+<meta name="description" content="Encuentra el sistema Hilti aprobado para tu ensamblaje — app offline para firestop">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Layout: hazard-striped hero with big condensed headline + CTA, install
+     steps as two side-by-side cards (stack on phone), feature rows below,
+     slim footer. Palette: white/near-black neutrals, one red accent, used
+     for both the CTA and the hazard stripe. */
+  :root {
+    --bg: #ffffff;
+    --fg: #15120f;
+    --muted: #6b6560;
+    --card: #faf8f6;
+    --border: #e7e2dc;
+    --accent: #d81e2c;
+    --accent-fg: #ffffff;
+    --radius: 14px;
+    --display: "Barlow Condensed", Oswald, Impact, sans-serif;
+    --body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b0a09;
+      --fg: #f3efe9;
+      --muted: #a39a92;
+      --card: #161311;
+      --border: #2a2521;
+      --accent: #ff3b3b;
+      --accent-fg: #0b0a09;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0b0a09;
+    --fg: #f3efe9;
+    --muted: #a39a92;
+    --card: #161311;
+    --border: #2a2521;
+    --accent: #ff3b3b;
+    --accent-fg: #0b0a09;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--body);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding-inline: 20px;
+  }
+
+  .topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-block: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brandmark {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+  }
+
+  .brandmark svg { flex: none; }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  select#langSelect, button#themeBtn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--fg);
+    height: 34px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--body);
+  }
+
+  select#langSelect { padding: 0 8px; }
+  button#themeBtn { width: 34px; padding: 0; font-size: 16px; }
+
+  .hazard {
+    height: 10px;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--accent) 0 14px,
+      var(--fg) 14px 28px
+    );
+    opacity: 0.9;
+  }
+
+  .hero {
+    padding-block: 48px 36px;
+    text-align: center;
+  }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: 999px;
+    padding: 5px 12px;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: clamp(42px, 11vw, 76px);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .tagline {
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: 46ch;
+    margin: 0 auto 30px;
+    text-wrap: balance;
+  }
+
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--body);
+    font-weight: 700;
+    font-size: 15px;
+    padding: 14px 24px;
+    border-radius: 999px;
+    text-decoration: none;
+    border: 1px solid transparent;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--fg);
+    border-color: var(--border);
+  }
+
+  section { padding-block: 40px; border-top: 1px solid var(--border); }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 28px;
+    letter-spacing: 0.01em;
+    margin: 0 0 22px;
+  }
+
+  .install-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 560px) {
+    .install-grid { grid-template-columns: 1fr; }
+  }
+
+  .install-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    min-width: 0;
+  }
+
+  .install-card h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .install-card ol {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .install-card ol li + li { margin-top: 6px; }
+  .install-card strong { color: var(--accent); }
+
+  .feature-list {
+    display: grid;
+    gap: 14px;
+  }
+
+  .feature-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+
+  .feature-num {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--accent);
+    flex: none;
+    width: 1.2em;
+  }
+
+  .feature-text strong { display: block; font-size: 15px; margin-bottom: 2px; }
+  .feature-text span { font-size: 13.5px; color: var(--muted); }
+
+  .offline-note {
+    margin-top: 18px;
+    font-size: 13.5px;
+    color: var(--muted);
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+  }
+
+  footer {
+    padding-block: 28px 40px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="topline">
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding-inline:0;">
+    <div class="brandmark">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C9 7 6 9 6 13.5C6 17.6 8.7 21 12 21C15.3 21 18 17.6 18 13.5C18 11.8 17.2 10.6 16.3 9.6C16.4 11 15.8 12 15 12.3C15.4 10 14 8.5 12.8 6.8C12.4 9 11 9.7 11 11.7C11 12.6 11.5 13.2 12 13.8C11 13.8 9.7 12.8 9.5 11C9 12 9 13.3 9.3 14.3C8.3 13.4 8 11.8 8.3 10.3C7.3 11.6 7 13 7.3 14.6C7.7 16.9 9.6 18.6 12 18.6C14.4 18.6 16.3 16.7 16.3 14.3C16.3 10.8 13.4 9.3 12 2Z" fill="var(--accent)"/>
+        <rect x="6.3" y="13.3" width="11.4" height="1.6" fill="var(--bg)" opacity="0.92"/>
+      </svg>
+      Firestop Finder
+    </div>
+    <div class="controls">
+      <select id="langSelect" aria-label="Language"></select>
+      <button id="themeBtn" aria-label="Theme">&#9728;</button>
+    </div>
+  </div>
+</div>
+<div class="hazard"></div>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="eyebrow" data-i18n="eyebrow"></span>
+    <h1>FIRESTOP<br><span>FINDER</span></h1>
+    <p class="tagline" data-i18n="tagline"></p>
+    <div class="cta-row">
+      <a class="btn btn-primary" id="ctaOpen" href="./" target="_blank" rel="noopener">
+        <span data-i18n="ctaOpen"></span> &rarr;
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/g-pine/firestop-app" target="_blank" rel="noopener">
+        <span data-i18n="ctaGithub"></span>
+      </a>
+    </div>
+  </div>
+
+  <section id="installSection">
+    <h2 data-i18n="installHeading"></h2>
+    <div class="install-grid">
+      <div class="install-card">
+        <h3 data-i18n="iosLabel"></h3>
+        <ol id="iosSteps"></ol>
+      </div>
+      <div class="install-card">
+        <h3 data-i18n="androidLabel"></h3>
+        <ol id="androidSteps"></ol>
+      </div>
+    </div>
+    <p class="offline-note" data-i18n="offlineNote"></p>
+  </section>
+
+  <section>
+    <h2 data-i18n="featuresHeading"></h2>
+    <div class="feature-list" id="featureList"></div>
+  </section>
+
+  <footer>
+    <div data-i18n="footerCredit"></div>
+    <div><a href="https://github.com/g-pine/firestop-app" target="_blank" rel="noopener">github.com/g-pine/firestop-app</a></div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LANGS = ["es", "en", "fr", "ru", "uk"];
+  var LANG_NAMES = { es: "Español", en: "English", fr: "Français", ru: "Русский", uk: "Українська" };
+
+  var STRINGS = {
+    es: {
+      eyebrow: "App web instalable · funciona sin internet",
+      tagline: "Encuentra el sistema Hilti aprobado para tu ensamblaje, directo desde tu teléfono — en la obra, sin señal.",
+      ctaOpen: "Abrir / Instalar la app",
+      ctaGithub: "Ver código en GitHub",
+      installHeading: "Cómo instalarla",
+      iosLabel: "iPhone (Safari)",
+      iosSteps: ["Abre el link de arriba en Safari", "Toca Compartir → “Agregar a inicio”", "Ábrela una vez con señal para guardar el catálogo"],
+      androidLabel: "Android (Chrome)",
+      androidSteps: ["Abre el link de arriba en Chrome", "Toca ⋮ → “Instalar app”"],
+      featuresHeading: "Qué puedes hacer",
+      features: [
+        ["Penetrante a través de muro o losa", "Tubo, cable, ducto, bandeja, múltiple..."],
+        ["Junta perimetral", "Cabeza de muro, piso-muro, piso-piso..."],
+        ["¿Para qué sirve este material?", "Confirma en qué sistemas se usa un producto Hilti"],
+        ["Buscar por código", "Directo, ej. C-AJ-1575"],
+        ["Favoritos", "Marca tus sistemas más usados para acceso rápido"],
+        ["Mis fotos", "Documenta cada instalación con foto y ubicación"],
+        ["Planos", "Sube los planos que te envíen y revísalos ahí mismo"]
+      ],
+      offlineNote: "Una vez instalada, funciona 100% offline — ideal para sitios de construcción sin señal.",
+      footerCredit: "Catálogo: Hilti CDN FS Library (May 2019) · 271 sistemas indexados."
+    },
+    en: {
+      eyebrow: "Installable web app · works offline",
+      tagline: "Find the approved Hilti system for your assembly, right from your phone — on site, no signal needed.",
+      ctaOpen: "Open / Install the app",
+      ctaGithub: "View code on GitHub",
+      installHeading: "How to install",
+      iosLabel: "iPhone (Safari)",
+      iosSteps: ["Open the link above in Safari", "Tap Share → “Add to Home Screen”", "Open it once with signal to save the catalog"],
+      androidLabel: "Android (Chrome)",
+      androidSteps: ["Open the link above in Chrome", "Tap ⋮ → “Install app”"],
+      featuresHeading: "What you can do",
+      features: [
+        ["Penetrant through wall or floor", "Pipe, cable, duct, tray, multiple..."],
+        ["Perimeter joint", "Top of wall, floor-to-wall, floor-to-floor..."],
+        ["What is this material for?", "Confirm which systems use a given Hilti product"],
+        ["Search by code", "Direct, e.g. C-AJ-1575"],
+        ["Favorites", "Star your most-used systems for quick access"],
+        ["My photos", "Document each install with a photo and location"],
+        ["Plans", "Upload drawings sent to you and review them right there"]
+      ],
+      offlineNote: "Once installed, it works 100% offline — ideal for job sites with no signal.",
+      footerCredit: "Catalog: Hilti CDN FS Library (May 2019) · 271 systems indexed."
+    },
+    fr: {
+      eyebrow: "Application web installable · fonctionne hors ligne",
+      tagline: "Trouvez le système Hilti approuvé pour votre assemblage, directement depuis votre téléphone — sur le chantier, sans réseau.",
+      ctaOpen: "Ouvrir / Installer l'app",
+      ctaGithub: "Voir le code sur GitHub",
+      installHeading: "Comment l'installer",
+      iosLabel: "iPhone (Safari)",
+      iosSteps: ["Ouvrez le lien ci-dessus dans Safari", "Touchez Partager → « Sur l'écran d'accueil »", "Ouvrez-la une fois avec réseau pour enregistrer le catalogue"],
+      androidLabel: "Android (Chrome)",
+      androidSteps: ["Ouvrez le lien ci-dessus dans Chrome", "Touchez ⋮ → « Installer l'application »"],
+      featuresHeading: "Ce que vous pouvez faire",
+      features: [
+        ["Pénétrant à travers un mur ou un plancher", "Tuyau, câble, gaine, chemin de câbles, multiple..."],
+        ["Joint périphérique", "Tête de cloison, plancher-mur, plancher-plancher..."],
+        ["À quoi sert ce matériau ?", "Confirmez dans quels systèmes un produit Hilti est utilisé"],
+        ["Rechercher par code", "Direct, ex. C-AJ-1575"],
+        ["Favoris", "Marquez vos systèmes les plus utilisés pour un accès rapide"],
+        ["Mes photos", "Documentez chaque installation avec une photo et un emplacement"],
+        ["Plans", "Téléversez les plans reçus et examinez-les directement"]
+      ],
+      offlineNote: "Une fois installée, elle fonctionne 100% hors ligne — idéale pour les chantiers sans réseau.",
+      footerCredit: "Catalogue : Hilti CDN FS Library (mai 2019) · 271 systèmes indexés."
+    },
+    ru: {
+      eyebrow: "Устанавливаемое веб-приложение · работает офлайн",
+      tagline: "Найдите одобренную систему Hilti для вашей конструкции прямо с телефона — на объекте, без сети.",
+      ctaOpen: "Открыть / Установить приложение",
+      ctaGithub: "Код на GitHub",
+      installHeading: "Как установить",
+      iosLabel: "iPhone (Safari)",
+      iosSteps: ["Откройте ссылку выше в Safari", "Нажмите «Поделиться» → «На экран «Домой»»", "Откройте один раз с сетью, чтобы сохранить каталог"],
+      androidLabel: "Android (Chrome)",
+      androidSteps: ["Откройте ссылку выше в Chrome", "Нажмите ⋮ → «Установить приложение»"],
+      featuresHeading: "Что можно делать",
+      features: [
+        ["Проходка через стену или перекрытие", "Труба, кабель, воздуховод, лоток, несколько проходок..."],
+        ["Периметральный шов", "По верху стены, пол-стена, пол-пол..."],
+        ["Для чего нужен этот материал?", "Узнайте, в каких системах используется материал Hilti"],
+        ["Поиск по коду", "Напрямую, напр. C-AJ-1575"],
+        ["Избранное", "Отмечайте часто используемые системы для быстрого доступа"],
+        ["Мои фото", "Документируйте каждую установку фото и местоположением"],
+        ["Чертежи", "Загружайте присланные чертежи и проверяйте их прямо здесь"]
+      ],
+      offlineNote: "После установки работает на 100% офлайн — идеально для объектов без сети.",
+      footerCredit: "Каталог: Hilti CDN FS Library (май 2019) · 271 систем в базе."
+    },
+    uk: {
+      eyebrow: "Застосунок для встановлення · працює офлайн",
+      tagline: "Знайдіть схвалену систему Hilti для вашої конструкції прямо з телефону — на об'єкті, без мережі.",
+      ctaOpen: "Відкрити / Встановити застосунок",
+      ctaGithub: "Код на GitHub",
+      installHeading: "Як встановити",
+      iosLabel: "iPhone (Safari)",
+      iosSteps: ["Відкрийте посилання вище в Safari", "Натисніть «Поділитися» → «На екран «Додому»»", "Відкрийте один раз із мережею, щоб зберегти каталог"],
+      androidLabel: "Android (Chrome)",
+      androidSteps: ["Відкрийте посилання вище в Chrome", "Натисніть ⋮ → «Встановити додаток»"],
+      featuresHeading: "Що можна робити",
+      features: [
+        ["Проходка через стіну або перекриття", "Труба, кабель, повітропровід, лоток, кілька проходок..."],
+        ["Периметральний шов", "По верху стіни, підлога-стіна, підлога-підлога..."],
+        ["Для чого потрібен цей матеріал?", "Дізнайтеся, в яких системах використовується матеріал Hilti"],
+        ["Пошук за кодом", "Напряму, напр. C-AJ-1575"],
+        ["Обране", "Позначайте системи, які часто використовуєте, для швидкого доступу"],
+        ["Мої фото", "Документуйте кожен монтаж фото та місцем розташування"],
+        ["Креслення", "Завантажуйте надіслані креслення та перевіряйте їх прямо тут"]
+      ],
+      offlineNote: "Після встановлення працює на 100% офлайн — ідеально для об'єктів без мережі.",
+      footerCredit: "Каталог: Hilti CDN FS Library (травень 2019) · 271 систем у базі."
+    }
+  };
+
+  var LANG_KEY = "firestop-landing-lang";
+  var THEME_KEY = "firestop-landing-theme";
+
+  function detectLang() {
+    try {
+      var nav = (navigator.language || "en").slice(0, 2).toLowerCase();
+      if (LANGS.indexOf(nav) !== -1) return nav;
+    } catch (e) {}
+    return "es";
+  }
+
+  function getLang() {
+    try {
+      var saved = localStorage.getItem(LANG_KEY);
+      if (saved && LANGS.indexOf(saved) !== -1) return saved;
+    } catch (e) {}
+    return detectLang();
+  }
+
+  function setLang(l) {
+    try { localStorage.setItem(LANG_KEY, l); } catch (e) {}
+  }
+
+  function getTheme() {
+    try {
+      var saved = localStorage.getItem(THEME_KEY);
+      if (saved === "light" || saved === "dark") return saved;
+    } catch (e) {}
+    try {
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+    } catch (e) {}
+    return "light";
+  }
+
+  function setTheme(t) {
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+  }
+
+  function applyTheme() {
+    var theme = getTheme();
+    document.documentElement.setAttribute("data-theme", theme);
+    document.getElementById("themeBtn").innerHTML = theme === "light" ? "&#9789;" : "&#9728;";
+  }
+
+  function render() {
+    var lang = getLang();
+    var dict = STRINGS[lang] || STRINGS.en;
+
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n");
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+
+    var iosEl = document.getElementById("iosSteps");
+    iosEl.innerHTML = "";
+    dict.iosSteps.forEach(function (s) {
+      var li = document.createElement("li");
+      li.textContent = s;
+      iosEl.appendChild(li);
+    });
+
+    var androidEl = document.getElementById("androidSteps");
+    androidEl.innerHTML = "";
+    dict.androidSteps.forEach(function (s) {
+      var li = document.createElement("li");
+      li.textContent = s;
+      androidEl.appendChild(li);
+    });
+
+    var featEl = document.getElementById("featureList");
+    featEl.innerHTML = "";
+    dict.features.forEach(function (f, i) {
+      var row = document.createElement("div");
+      row.className = "feature-row";
+      row.innerHTML =
+        '<div class="feature-num">' + (i + 1) + "</div>" +
+        '<div class="feature-text"><strong></strong><span></span></div>';
+      row.querySelector("strong").textContent = f[0];
+      row.querySelector("span").textContent = f[1];
+      featEl.appendChild(row);
+    });
+
+    document.documentElement.lang = lang;
+  }
+
+  var langSelect = document.getElementById("langSelect");
+  LANGS.forEach(function (code) {
+    var opt = document.createElement("option");
+    opt.value = code;
+    opt.textContent = LANG_NAMES[code];
+    langSelect.appendChild(opt);
+  });
+  langSelect.value = getLang();
+  langSelect.addEventListener("change", function () {
+    setLang(langSelect.value);
+    render();
+  });
+
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    var next = getTheme() === "light" ? "dark" : "light";
+    setTheme(next);
+    applyTheme();
+  });
+
+  applyTheme();
+  render();
+})();
+</script>
+</body>
+</html>
