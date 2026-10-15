@@ -128,6 +128,7 @@
     html += optionCard("jointHome", { label: I18N.t("home_joint_label"), sub: I18N.t("home_joint_sub"), count: joints.length });
     html += optionCard("materialHome", { label: I18N.t("home_material_label"), sub: I18N.t("home_material_sub"), count: PRODUCTS.length });
     html += optionCard("search", { label: I18N.t("home_search_label"), sub: I18N.t("home_search_sub") });
+    html += optionCard("photosHome", { label: I18N.t("home_photos_label"), sub: I18N.t("home_photos_sub") });
     html += "</div>";
     html += '<p class="footer-note">' + escapeHtml(I18N.t("home_footer", { n: DATA.length })) + "</p>";
     appEl.innerHTML = html;
@@ -136,6 +137,7 @@
     bindOptionCard("jointHome", function () { go("family", { kind: "joint" }); });
     bindOptionCard("materialHome", function () { go("products", {}); });
     bindOptionCard("search", function () { go("search", {}); });
+    bindOptionCard("photosHome", function () { go("photos", {}); });
   };
 
   screens.products = function () {
@@ -340,6 +342,11 @@
       html += "</div>";
     }
 
+    html += '<div class="section-title">' + escapeHtml(I18N.t("photos_section_title")) + "</div>";
+    html += '<button class="btn-capture" id="capBtn">' + escapeHtml(I18N.t("photos_add_button")) + "</button>";
+    html += '<div id="captureArea"></div>';
+    html += '<div id="photoGrid"></div>';
+
     html += '<div class="section-title">' + escapeHtml(I18N.t("detail_section_text")) + "</div>";
     html += '<div class="detail-text">' + escapeHtml(sys.text || "") + "</div>";
 
@@ -354,6 +361,38 @@
         });
       });
     }
+
+    function reloadPhotos() {
+      PhotoDB.listBySystem(sys.code).then(function (photos) {
+        renderPhotoGrid("photoGrid", photos, { showCode: false, emptyText: I18N.t("photos_empty_system"), onChange: reloadPhotos });
+      });
+    }
+    reloadPhotos();
+
+    document.getElementById("capBtn").addEventListener("click", function () {
+      startCapture("captureArea", sys.code, reloadPhotos);
+    });
+  };
+
+  screens.photos = function () {
+    titleEl.textContent = I18N.t("photos_gallery_title");
+    backBtn.hidden = false;
+
+    var html = '<button class="btn-capture" id="capBtn">' + escapeHtml(I18N.t("photos_add_button")) + "</button>";
+    html += '<div id="captureArea"></div>';
+    html += '<div id="photoGrid"></div>';
+    appEl.innerHTML = html;
+
+    function reloadPhotos() {
+      PhotoDB.listAll().then(function (photos) {
+        renderPhotoGrid("photoGrid", photos, { showCode: true, emptyText: I18N.t("photos_gallery_empty"), onChange: reloadPhotos });
+      });
+    }
+    reloadPhotos();
+
+    document.getElementById("capBtn").addEventListener("click", function () {
+      startCapture("captureArea", null, reloadPhotos);
+    });
   };
 
   // ---------- render helpers ----------
@@ -389,6 +428,141 @@
     appEl.querySelectorAll(".result-card").forEach(function (el) {
       el.addEventListener("click", function () {
         go("detail", { code: el.getAttribute("data-code") });
+      });
+    });
+  }
+
+  // ---------- photos ----------
+  function startCapture(containerId, systemCode, onSaved) {
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.setAttribute("capture", "environment");
+    input.style.display = "none";
+    document.body.appendChild(input);
+    input.addEventListener("change", function () {
+      var file = input.files && input.files[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      renderCaptureForm(containerId, file, systemCode, onSaved);
+    });
+    input.click();
+  }
+
+  function renderCaptureForm(containerId, file, systemCode, onSaved) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var url = URL.createObjectURL(file);
+    container.innerHTML =
+      '<div class="note-box">' +
+      '<img src="' + url + '">' +
+      '<textarea id="noteInput" placeholder="' + escapeHtml(I18N.t("photos_note_placeholder")) + '"></textarea>' +
+      '<div class="note-actions">' +
+      '<button id="noteCancel">' + escapeHtml(I18N.t("photos_cancel")) + "</button>" +
+      '<button id="noteSave" class="primary">' + escapeHtml(I18N.t("photos_save")) + "</button>" +
+      "</div></div>";
+
+    document.getElementById("noteCancel").addEventListener("click", function () {
+      URL.revokeObjectURL(url);
+      container.innerHTML = "";
+    });
+    document.getElementById("noteSave").addEventListener("click", function () {
+      var note = document.getElementById("noteInput").value;
+      PhotoDB.addPhoto(file, systemCode, note)
+        .then(function () {
+          URL.revokeObjectURL(url);
+          container.innerHTML = "";
+          if (onSaved) onSaved();
+        })
+        .catch(function () {
+          alert(I18N.t("photos_capture_error"));
+        });
+    });
+  }
+
+  function renderPhotoGrid(containerId, photos, opts) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    if (!photos.length) {
+      container.innerHTML = '<div class="empty-state">' + escapeHtml(opts.emptyText) + "</div>";
+      return;
+    }
+    var html = '<div class="photo-grid">';
+    photos.forEach(function (p) {
+      var url = URL.createObjectURL(p.blob);
+      html += '<button class="photo-thumb" data-id="' + p.id + '"><img src="' + url + '">';
+      if (opts.showCode) {
+        html += '<span class="code-badge">' + escapeHtml(p.systemCode || I18N.t("photos_no_system")) + "</span>";
+      }
+      html += "</button>";
+    });
+    html += "</div>";
+    container.innerHTML = html;
+    container.querySelectorAll(".photo-thumb").forEach(function (btn) {
+      var id = parseInt(btn.getAttribute("data-id"), 10);
+      var photo = photos.find(function (p) { return p.id === id; });
+      btn.addEventListener("click", function () { openLightbox(photo, opts.onChange); });
+    });
+  }
+
+  function fileNameForPhoto(photo) {
+    var code = photo.systemCode ? photo.systemCode.replace(/[^A-Z0-9]/gi, "_") : "firestop";
+    return code + "-" + photo.id + ".jpg";
+  }
+
+  function sharePhoto(photo) {
+    try {
+      var file = new File([photo.blob], fileNameForPhoto(photo), { type: "image/jpeg" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: photo.systemCode || "Firestop Finder" }).catch(function () {});
+        return;
+      }
+    } catch (e) {}
+    downloadPhoto(photo);
+  }
+
+  function downloadPhoto(photo) {
+    var url = URL.createObjectURL(photo.blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = fileNameForPhoto(photo);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function openLightbox(photo, onChange) {
+    var url = URL.createObjectURL(photo.blob);
+    var overlay = document.createElement("div");
+    overlay.className = "lightbox";
+    var dateStr = new Date(photo.createdAt).toLocaleString(I18N.getLang());
+    var codeLabel = photo.systemCode || I18N.t("photos_no_system");
+    overlay.innerHTML =
+      '<img src="' + url + '">' +
+      '<div class="meta">' + escapeHtml(codeLabel) + " · " + escapeHtml(dateStr) + (photo.note ? "<br>" + escapeHtml(photo.note) : "") + "</div>" +
+      '<div class="actions">' +
+      '<button id="lbShare">' + escapeHtml(I18N.t("photos_share")) + "</button>" +
+      '<button id="lbDownload">' + escapeHtml(I18N.t("photos_download")) + "</button>" +
+      '<button id="lbDelete" class="danger">' + escapeHtml(I18N.t("photos_delete")) + "</button>" +
+      '<button id="lbClose">&times;</button>' +
+      "</div>";
+    document.body.appendChild(overlay);
+
+    function close() {
+      URL.revokeObjectURL(url);
+      if (overlay.parentNode) document.body.removeChild(overlay);
+    }
+
+    overlay.querySelector("#lbClose").addEventListener("click", close);
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) close(); });
+    overlay.querySelector("#lbShare").addEventListener("click", function () { sharePhoto(photo); });
+    overlay.querySelector("#lbDownload").addEventListener("click", function () { downloadPhoto(photo); });
+    overlay.querySelector("#lbDelete").addEventListener("click", function () {
+      if (!confirm(I18N.t("photos_delete_confirm"))) return;
+      PhotoDB.deletePhoto(photo.id).then(function () {
+        close();
+        if (onChange) onChange();
       });
     });
   }

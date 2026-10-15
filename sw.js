@@ -1,9 +1,10 @@
-var CACHE_NAME = "firestop-finder-v4";
+var CACHE_NAME = "firestop-finder-v5";
 var ASSETS = [
   "./",
   "index.html",
   "styles.css",
   "i18n.js",
+  "db.js",
   "app.js",
   "manifest.json",
   "data/systems.json",
