@@ -17,6 +17,31 @@
   var FAMILY_ORDER_JOINT = ["HW-D", "FW-D", "FF-D", "WW-D", "BW-S"];
   var PENETRANT_ORDER = ["1", "2", "5", "3", "4", "7", "6", "8", "0"];
 
+  // ---------- favorites (localStorage: small list of system codes) ----------
+  var FAVORITES_KEY = "firestop-favorites";
+
+  function getFavorites() {
+    try {
+      var raw = localStorage.getItem(FAVORITES_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function isFavorite(code) {
+    return getFavorites().indexOf(code) !== -1;
+  }
+
+  function toggleFavorite(code) {
+    var favs = getFavorites();
+    var i = favs.indexOf(code);
+    if (i === -1) favs.push(code);
+    else favs.splice(i, 1);
+    try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs)); } catch (e) {}
+    return i === -1;
+  }
+
   function byCount(items, getKey) {
     var counts = {};
     items.forEach(function (it) {
@@ -125,20 +150,26 @@
     html += '<img class="home-logo" src="icons/icon-512.png" alt="Firestop Finder" width="96" height="96">';
     html += '<p class="lead">' + escapeHtml(I18N.t("home_lead")) + "</p>";
     html += '<div class="option-grid">';
+    var favCount = getFavorites().length;
+
+    html += optionCard("favoritesHome", { label: I18N.t("home_favorites_label"), sub: I18N.t("home_favorites_sub"), count: favCount });
     html += optionCard("throughHome", { label: I18N.t("home_through_label"), sub: I18N.t("home_through_sub"), count: through.length });
     html += optionCard("jointHome", { label: I18N.t("home_joint_label"), sub: I18N.t("home_joint_sub"), count: joints.length });
     html += optionCard("materialHome", { label: I18N.t("home_material_label"), sub: I18N.t("home_material_sub"), count: PRODUCTS.length });
     html += optionCard("search", { label: I18N.t("home_search_label"), sub: I18N.t("home_search_sub") });
     html += optionCard("photosHome", { label: I18N.t("home_photos_label"), sub: I18N.t("home_photos_sub") });
+    html += optionCard("plansHome", { label: I18N.t("home_plans_label"), sub: I18N.t("home_plans_sub") });
     html += "</div>";
     html += '<p class="footer-note">' + escapeHtml(I18N.t("home_footer", { n: DATA.length })) + "</p>";
     appEl.innerHTML = html;
 
+    bindOptionCard("favoritesHome", function () { go("favorites", {}); });
     bindOptionCard("throughHome", function () { go("family", { kind: "through_penetration" }); });
     bindOptionCard("jointHome", function () { go("family", { kind: "joint" }); });
     bindOptionCard("materialHome", function () { go("products", {}); });
     bindOptionCard("search", function () { go("search", {}); });
     bindOptionCard("photosHome", function () { go("photos", {}); });
+    bindOptionCard("plansHome", function () { go("plans", {}); });
   };
 
   screens.products = function () {
@@ -321,7 +352,10 @@
     backBtn.hidden = false;
 
     var html = "";
+    html += '<div class="detail-head">';
     html += '<h2 class="detail-code">' + sys.code + "</h2>";
+    html += '<button class="star-btn" id="favBtn" aria-label="' + escapeHtml(I18N.t("favorite_add")) + '">' + (isFavorite(sys.code) ? "★" : "☆") + "</button>";
+    html += "</div>";
     html += '<p class="detail-desc">' + escapeHtml(sys.description || "") + "</p>";
 
     html += '<div class="rating-card">';
@@ -373,6 +407,34 @@
     document.getElementById("capBtn").addEventListener("click", function () {
       startCapture("captureArea", sys.code, reloadPhotos);
     });
+
+    var favBtn = document.getElementById("favBtn");
+    favBtn.addEventListener("click", function () {
+      var nowFav = toggleFavorite(sys.code);
+      favBtn.textContent = nowFav ? "★" : "☆";
+      favBtn.setAttribute("aria-label", I18N.t(nowFav ? "favorite_remove" : "favorite_add"));
+    });
+  };
+
+  screens.favorites = function () {
+    titleEl.textContent = I18N.t("favorites_title");
+    backBtn.hidden = false;
+
+    var codes = getFavorites();
+    var items = DATA.filter(function (s) { return codes.indexOf(s.code) !== -1; });
+
+    if (!items.length) {
+      appEl.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.t("favorites_empty")) + "</div>";
+      return;
+    }
+
+    var html = "";
+    items
+      .slice()
+      .sort(function (a, b) { return a.code.localeCompare(b.code); })
+      .forEach(function (s) { html += resultCard(s); });
+    appEl.innerHTML = html;
+    bindResultCards(items, function () { screens.favorites(); });
   };
 
   screens.photos = function () {
@@ -423,6 +485,100 @@
     });
   };
 
+  screens.plans = function () {
+    titleEl.textContent = I18N.t("plans_title");
+    backBtn.hidden = false;
+
+    var html = '<input type="file" id="planFileInput" accept="application/pdf,image/*" hidden>';
+    html += '<button class="btn-capture" id="uploadPlanBtn">' + escapeHtml(I18N.t("plans_add_button")) + "</button>";
+    html += '<div id="plansList"></div>';
+    appEl.innerHTML = html;
+
+    function renderList(plans) {
+      var listEl = document.getElementById("plansList");
+      if (!plans.length) {
+        listEl.innerHTML = '<div class="empty-state">' + escapeHtml(I18N.t("plans_empty")) + "</div>";
+        return;
+      }
+      var listHtml = '<div class="option-grid">';
+      plans.forEach(function (p) {
+        var sub = new Date(p.createdAt).toLocaleDateString(I18N.getLang());
+        if (p.reviewed) sub += " · " + I18N.t("plan_reviewed_badge");
+        listHtml += optionCard("plan_" + p.id, { label: p.name, sub: sub });
+      });
+      listHtml += "</div>";
+      listEl.innerHTML = listHtml;
+      plans.forEach(function (p) {
+        bindOptionCard("plan_" + p.id, function () { go("planView", { id: p.id }); });
+      });
+    }
+
+    function reload() {
+      PlansDB.listAll().then(renderList);
+    }
+    reload();
+
+    document.getElementById("uploadPlanBtn").addEventListener("click", function () {
+      document.getElementById("planFileInput").click();
+    });
+    document.getElementById("planFileInput").addEventListener("change", function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      PlansDB.addPlan(file).then(reload);
+    });
+  };
+
+  screens.planView = function (params) {
+    backBtn.hidden = false;
+    titleEl.textContent = I18N.t("plans_title");
+
+    PlansDB.getPlan(params.id).then(function (plan) {
+      if (!plan) {
+        appEl.innerHTML = "";
+        return;
+      }
+      titleEl.textContent = plan.name;
+      var url = URL.createObjectURL(plan.blob);
+
+      var html = "";
+      if (plan.mimeType === "application/pdf") {
+        html += '<iframe src="' + url + '" class="plan-frame" title="' + escapeHtml(plan.name) + '"></iframe>';
+      } else if (plan.mimeType.indexOf("image/") === 0) {
+        html += '<img src="' + url + '" class="plan-image" alt="' + escapeHtml(plan.name) + '">';
+      } else {
+        html += '<div class="empty-state">' + escapeHtml(I18N.t("plan_unsupported")) + "</div>";
+      }
+
+      html += '<button class="btn-capture" id="reviewedBtn">' + escapeHtml(plan.reviewed ? I18N.t("plan_unmark_reviewed") : I18N.t("plan_mark_reviewed")) + "</button>";
+      html += '<textarea class="search-box" id="planNote" placeholder="' + escapeHtml(I18N.t("plan_note_placeholder")) + '" style="min-height:70px;">' + escapeHtml(plan.note || "") + "</textarea>";
+      html += '<div class="note-actions"><button id="downloadPlanBtn">' + escapeHtml(I18N.t("plan_download")) + '</button><button id="deletePlanBtn" class="primary">' + escapeHtml(I18N.t("plan_delete")) + "</button></div>";
+      appEl.innerHTML = html;
+
+      document.getElementById("reviewedBtn").addEventListener("click", function () {
+        var newVal = !plan.reviewed;
+        PlansDB.updatePlan(plan.id, { reviewed: newVal }).then(function () {
+          plan.reviewed = newVal;
+          document.getElementById("reviewedBtn").textContent = newVal ? I18N.t("plan_unmark_reviewed") : I18N.t("plan_mark_reviewed");
+        });
+      });
+      document.getElementById("planNote").addEventListener("change", function (e) {
+        PlansDB.updatePlan(plan.id, { note: e.target.value });
+      });
+      document.getElementById("downloadPlanBtn").addEventListener("click", function () {
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = plan.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+      document.getElementById("deletePlanBtn").addEventListener("click", function () {
+        if (!confirm(I18N.t("plan_delete_confirm"))) return;
+        PlansDB.deletePlan(plan.id).then(goBack);
+      });
+    });
+  };
+
   // ---------- render helpers ----------
   function optionCard(id, opts) {
     var html = '<button class="option-card" id="' + id + '">' + escapeHtml(opts.label);
@@ -438,7 +594,8 @@
   }
 
   function resultCard(s) {
-    var html = '<button class="result-card" data-code="' + s.code + '">';
+    var html = '<div class="result-card" data-code="' + s.code + '">';
+    html += '<button class="star-btn-sm" data-fav-code="' + s.code + '" aria-label="' + escapeHtml(I18N.t("favorite_add")) + '">' + (isFavorite(s.code) ? "★" : "☆") + "</button>";
     html += '<div class="result-code">' + s.code + "</div>";
     html += '<div class="result-desc">' + escapeHtml((s.description || "").slice(0, 90)) + "</div>";
     html += '<div class="rating-tags">';
@@ -448,14 +605,24 @@
         html += '<span class="' + cls + '">' + k + ": " + escapeHtml(s.ratings[k]) + "</span>";
       }
     });
-    html += "</div></button>";
+    html += "</div></div>";
     return html;
   }
 
-  function bindResultCards(items) {
+  function bindResultCards(items, onFavToggle) {
     appEl.querySelectorAll(".result-card").forEach(function (el) {
       el.addEventListener("click", function () {
         go("detail", { code: el.getAttribute("data-code") });
+      });
+    });
+    appEl.querySelectorAll(".star-btn-sm").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var code = btn.getAttribute("data-fav-code");
+        var nowFav = toggleFavorite(code);
+        btn.textContent = nowFav ? "★" : "☆";
+        btn.setAttribute("aria-label", I18N.t(nowFav ? "favorite_remove" : "favorite_add"));
+        if (onFavToggle) onFavToggle();
       });
     });
   }

@@ -121,3 +121,108 @@ var PhotoDB = (function () {
     deletePhoto: deletePhoto,
   };
 })();
+
+// Stores plan sheets (PDF or image) uploaded for review, kept at full
+// resolution (no downscale) so dimensions/text stay legible.
+var PlansDB = (function () {
+  "use strict";
+
+  var DB_NAME = "firestop-plans";
+  var DB_VERSION = 1;
+  var STORE = "plans";
+
+  function openDb() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          var store = db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
+          store.createIndex("createdAt", "createdAt", { unique: false });
+        }
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function withStore(mode, fn) {
+    return openDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE, mode);
+        var store = tx.objectStore(STORE);
+        var result = fn(store);
+        tx.oncomplete = function () {
+          db.close();
+          resolve(result);
+        };
+        tx.onerror = function () {
+          db.close();
+          reject(tx.error);
+        };
+      });
+    });
+  }
+
+  function addPlan(file) {
+    var record = {
+      name: file.name || "plano",
+      mimeType: file.type || "application/octet-stream",
+      blob: file,
+      note: "",
+      reviewed: false,
+      createdAt: Date.now(),
+    };
+    return withStore("readwrite", function (store) {
+      store.add(record);
+    });
+  }
+
+  function listAll() {
+    return withStore("readonly", function (store) {
+      var out = [];
+      store.openCursor(null, "prev").onsuccess = function (e) {
+        var cursor = e.target.result;
+        if (cursor) {
+          out.push(cursor.value);
+          cursor.continue();
+        }
+      };
+      return out;
+    });
+  }
+
+  function getPlan(id) {
+    return withStore("readonly", function (store) {
+      return store.get(id);
+    }).then(function (req) {
+      return req.result || null;
+    });
+  }
+
+  function updatePlan(id, changes) {
+    return withStore("readwrite", function (store) {
+      var req = store.get(id);
+      req.onsuccess = function () {
+        var rec = req.result;
+        if (!rec) return;
+        Object.keys(changes).forEach(function (k) { rec[k] = changes[k]; });
+        store.put(rec);
+      };
+    });
+  }
+
+  function deletePlan(id) {
+    return withStore("readwrite", function (store) {
+      store.delete(id);
+    });
+  }
+
+  return {
+    addPlan: addPlan,
+    listAll: listAll,
+    getPlan: getPlan,
+    updatePlan: updatePlan,
+    deletePlan: deletePlan,
+  };
+})();
