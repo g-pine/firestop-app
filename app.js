@@ -12,6 +12,8 @@
   var DATA = [];
   var PRODUCTS = [];
   var stack = []; // [{name, params}]
+  var authed = false;
+  var booted = false;
 
   var FAMILY_ORDER_THROUGH = ["C-AJ", "C-BJ", "W-L", "W-J", "F-A", "F-B", "F-C", "F-E"];
   var FAMILY_ORDER_JOINT = ["HW-D", "FW-D", "FF-D", "WW-D", "BW-S"];
@@ -117,11 +119,13 @@
 
   // ---------- navigation ----------
   function go(name, params) {
+    if (!authed) return;
     stack.push({ name: name, params: params || {} });
     render();
   }
 
   function goHome() {
+    if (!authed) return;
     stack = [{ name: "home", params: {} }];
     render();
   }
@@ -817,6 +821,124 @@
     bindOptionCard: bindOptionCard,
   };
 
+  // ---------- mandatory login gate ----------
+  // The whole app requires a signed-in account. Once signed in, the session
+  // is cached by the Supabase client (localStorage), so this only needs
+  // network the first time (or after signing out) — not on every open.
+  var LOGIN_STR = {
+    es: {
+      login_lead: "Inicia sesión para usar Firestop Finder.",
+      signup_lead: "Crea tu cuenta para usar Firestop Finder.",
+      email: "Correo",
+      password: "Contraseña (mínimo 8)",
+      name: "Nombre",
+      login: "Entrar",
+      signup: "Crear cuenta",
+      no_account: "¿No tienes cuenta? Crear una",
+      have_account: "¿Ya tienes cuenta? Entrar",
+      login_bad: "Correo o contraseña incorrectos.",
+      login_unconfirmed: "Falta confirmar tu correo.",
+      signup_exists: "Ese correo ya tiene cuenta. Entra con tu contraseña.",
+      signup_weak: "La contraseña es muy corta.",
+      signup_confirm: "Te enviamos un correo para confirmar. Después entra aquí.",
+      rate_limited: "Demasiados intentos. Espera un momento.",
+      offline_login: "Sin señal. Para entrar la primera vez necesitas internet.",
+      error: "Algo falló: {m}",
+    },
+    en: {
+      login_lead: "Sign in to use Firestop Finder.",
+      signup_lead: "Create your account to use Firestop Finder.",
+      email: "Email",
+      password: "Password (min. 8)",
+      name: "Name",
+      login: "Sign in",
+      signup: "Create account",
+      no_account: "No account? Create one",
+      have_account: "Have an account? Sign in",
+      login_bad: "Wrong email or password.",
+      login_unconfirmed: "Your email isn't confirmed yet.",
+      signup_exists: "That email already has an account. Sign in.",
+      signup_weak: "Password is too short.",
+      signup_confirm: "We sent you a confirmation email. Then sign in here.",
+      rate_limited: "Too many attempts. Wait a moment.",
+      offline_login: "No signal. You need internet to sign in the first time.",
+      error: "Something went wrong: {m}",
+    },
+  };
+
+  function lt(k, p) {
+    var l = I18N.getLang();
+    var s = (LOGIN_STR[l] && LOGIN_STR[l][k]) !== undefined ? LOGIN_STR[l][k] : LOGIN_STR.en[k] !== undefined ? LOGIN_STR.en[k] : k;
+    if (p) s = s.replace(/\{(\w+)\}/g, function (_, x) { return p[x] !== undefined ? p[x] : ""; });
+    return s;
+  }
+
+  function lgErrMsg(err) {
+    var k = Team.errorText(err);
+    return LOGIN_STR.en[k] !== undefined ? lt(k) : lt("error", { m: k });
+  }
+
+  function proceedPastGate() {
+    authed = true;
+    homeBtn.hidden = false;
+    goHome();
+  }
+
+  function showLoginGate(mode, msg, kind) {
+    authed = false;
+    stack = [];
+    homeBtn.hidden = true;
+    backBtn.hidden = true;
+    titleEl.textContent = "Firestop Finder";
+    var login = mode === "login";
+    var html = '<p class="lead">' + escapeHtml(lt(login ? "login_lead" : "signup_lead")) + "</p>";
+    if (msg) html += '<div class="team-msg ' + (kind || "err") + '">' + escapeHtml(msg) + "</div>";
+    html += '<form id="lgForm">';
+    if (!login) html += '<input class="search-box" id="lgName" placeholder="' + escapeHtml(lt("name")) + '" autocomplete="name">';
+    html += '<input class="search-box" id="lgEmail" type="email" required placeholder="' + escapeHtml(lt("email")) + '" autocomplete="email">';
+    html += '<input class="search-box" id="lgPass" type="password" required minlength="8" placeholder="' + escapeHtml(lt("password")) + '" autocomplete="' + (login ? "current-password" : "new-password") + '">';
+    html += '<button class="btn-capture" id="lgSubmit" type="submit">' + escapeHtml(lt(login ? "login" : "signup")) + "</button></form>";
+    html += '<button class="team-link" id="lgSwitch">' + escapeHtml(lt(login ? "no_account" : "have_account")) + "</button>";
+    appEl.innerHTML = html;
+
+    document.getElementById("lgSwitch").addEventListener("click", function () { showLoginGate(login ? "signup" : "login"); });
+    document.getElementById("lgForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!navigator.onLine) return showLoginGate(mode, lt("offline_login"));
+      var btn = document.getElementById("lgSubmit");
+      btn.disabled = true;
+      var email = document.getElementById("lgEmail").value;
+      var pass = document.getElementById("lgPass").value;
+      var p = login
+        ? Team.signIn(email, pass)
+        : Team.signUp(email, pass, (document.getElementById("lgName") || {}).value || "").then(function (r) {
+            if (r.needsConfirm) throw { confirm: true };
+            return r.session;
+          });
+      p.then(function () {
+        proceedPastGate();
+      }).catch(function (err) {
+        if (err && err.confirm) return showLoginGate("login", lt("signup_confirm"), "ok");
+        showLoginGate(mode, lgErrMsg(err));
+      });
+    });
+  }
+
+  function requireAuth() {
+    Team.getSession().then(function (s) {
+      if (s) proceedPastGate();
+      else showLoginGate("login");
+    });
+  }
+
+  // Signing out anywhere in the app (e.g. from the Obra/Team section) must
+  // lock the whole app again, not just that section.
+  Team.onAuth(function (s) {
+    if (!booted) return;
+    if (s && !authed) proceedPastGate();
+    else if (!s && authed) showLoginGate("login");
+  });
+
   // ---------- boot ----------
   applyTheme();
   populateLangSelect();
@@ -841,8 +963,9 @@
     .then(function (results) {
       DATA = results[0];
       PRODUCTS = results[1];
-      goHome();
       hideSplash();
+      booted = true;
+      requireAuth();
     })
     .catch(function (err) {
       appEl.innerHTML = '<div class="empty-state">' + escapeHtml(err.message) + "</div>";
