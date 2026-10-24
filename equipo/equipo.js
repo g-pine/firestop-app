@@ -616,7 +616,10 @@
       b.addEventListener("click", function () {
         if (!confirm(t("delete_confirm"))) return;
         Team.borrarTarea(b.getAttribute("data-del"))
-          .then(loadTareas)
+          .then(function () {
+            toast(t("deleted"));
+            return loadTareas();
+          })
           .catch(function (err) { toast(errMsg(err)); });
       });
     });
