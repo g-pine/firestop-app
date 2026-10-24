@@ -90,6 +90,20 @@
       unnamed_plano: "Plano sin título",
       unnamed_foto: "Foto",
       rename: "Tu nombre",
+      tareas: "Tareas",
+      new_tarea: "+ Nueva tarea",
+      t_titulo: "Título",
+      t_titulo_ph: "Ej: Sellar piso 3, torre B",
+      t_desc: "Descripción (opcional)",
+      t_asignar: "Asignar a",
+      unassigned: "Sin asignar",
+      assigned_to: "Asignado a {who}",
+      done: "Hecho",
+      pending_task: "Pendiente",
+      no_tareas: "No hay tareas todavía.",
+      tarea_created: "Tarea creada",
+      mark_done: "Marcar hecho",
+      mark_pending: "Marcar pendiente",
     },
     en: {
       brand_sub: "· Team",
@@ -178,6 +192,20 @@
       unnamed_plano: "Untitled drawing",
       unnamed_foto: "Photo",
       rename: "Your name",
+      tareas: "Tasks",
+      new_tarea: "+ New task",
+      t_titulo: "Title",
+      t_titulo_ph: "E.g. Seal floor 3, tower B",
+      t_desc: "Description (optional)",
+      t_asignar: "Assign to",
+      unassigned: "Unassigned",
+      assigned_to: "Assigned to {who}",
+      done: "Done",
+      pending_task: "Pending",
+      no_tareas: "No tasks yet.",
+      tarea_created: "Task created",
+      mark_done: "Mark done",
+      mark_pending: "Mark pending",
     },
   };
 
@@ -265,12 +293,19 @@
     obras: [],
     obraId: null,
     pubs: [],
+    tareas: [],
+    members: [],
     urls: {},
     tab: "all",
     q: "",
     autor: "",
     unsub: null,
   };
+
+  function isAdmin() {
+    var o = currentObra();
+    return !!(o && o.rol === "admin");
+  }
 
   // ---------- auth view ----------
   var authMode = "login";
@@ -375,6 +410,8 @@
     if (state.unsub) { state.unsub(); state.unsub = null; }
     state.obraId = id;
     state.pubs = [];
+    state.tareas = [];
+    state.members = [];
     state.urls = {};
     state.autor = "";
     Team.setObraId(id);
@@ -382,6 +419,8 @@
     if (!id) return renderNoObras();
     renderMain(true);
     loadPubs();
+    loadTareas();
+    Team.miembros(id).then(function (rows) { state.members = rows; }, function () {});
     var reloadSoon = debounce(loadPubs, 400);
     state.unsub = Team.suscribir(id, reloadSoon);
   }
@@ -399,6 +438,18 @@
           Object.keys(map).forEach(function (k) { state.urls[k] = map[k]; });
           if (id === state.obraId) renderMain();
         });
+      })
+      .catch(function (err) { toast(errMsg(err)); });
+  }
+
+  function loadTareas() {
+    var id = state.obraId;
+    return Team.listTareas(id)
+      .then(function (rows) {
+        if (id !== state.obraId) return;
+        state.tareas = rows;
+        if (state.tab === "tarea") renderGrid();
+        else renderMain();
       })
       .catch(function (err) { toast(errMsg(err)); });
   }
@@ -439,37 +490,42 @@
     html += '<div class="sub">' + (o.direccion ? esc(o.direccion) + " · " : "") + esc(t("items", { n: state.pubs.length })) + "</div>";
     html += "</div>";
     html += '<button class="btn" id="membersBtn">' + esc(t("members")) + "</button>";
+    if (isAdmin()) html += '<button class="btn" id="newTareaBtn">' + esc(t("new_tarea")) + "</button>";
     html += '<button class="btn primary" id="uploadBtn">' + esc(t("upload")) + "</button>";
     html += "</div>";
 
     html += '<div class="tabs">';
-    [["all", t("all"), state.pubs.length], ["plano", t("planos"), nPl], ["foto", t("fotos"), nFo]].forEach(function (x) {
+    [["all", t("all"), state.pubs.length], ["plano", t("planos"), nPl], ["foto", t("fotos"), nFo], ["tarea", t("tareas"), state.tareas.length]].forEach(function (x) {
       html += '<button class="tab" data-tab="' + x[0] + '" aria-pressed="' + (state.tab === x[0]) + '">' + esc(x[1]) + '<span class="n">' + x[2] + "</span></button>";
     });
     html += "</div>";
 
-    html += '<div class="filters">';
-    html += '<input class="input" id="qInput" type="search" placeholder="' + esc(t("search_ph")) + '" value="' + esc(state.q) + '">';
-    html += '<select class="input" id="autorSel" style="flex:0 1 220px"><option value="">' + esc(t("all_people")) + "</option>";
-    Object.keys(autores).forEach(function (id) {
-      html += '<option value="' + id + '"' + (state.autor === id ? " selected" : "") + ">" + esc(autores[id]) + "</option>";
-    });
-    html += "</select></div>";
+    if (state.tab !== "tarea") {
+      html += '<div class="filters">';
+      html += '<input class="input" id="qInput" type="search" placeholder="' + esc(t("search_ph")) + '" value="' + esc(state.q) + '">';
+      html += '<select class="input" id="autorSel" style="flex:0 1 220px"><option value="">' + esc(t("all_people")) + "</option>";
+      Object.keys(autores).forEach(function (id) {
+        html += '<option value="' + id + '"' + (state.autor === id ? " selected" : "") + ">" + esc(autores[id]) + "</option>";
+      });
+      html += "</select></div>";
+    }
 
     html += '<div id="gridWrap"></div>';
     $("main").innerHTML = html;
 
     $("membersBtn").addEventListener("click", openMembers);
+    if (isAdmin()) $("newTareaBtn").addEventListener("click", openNewTarea);
     $("uploadBtn").addEventListener("click", function () { openUpload(); });
     document.querySelectorAll(".tab").forEach(function (b) {
       b.addEventListener("click", function () {
         state.tab = b.getAttribute("data-tab");
-        document.querySelectorAll(".tab").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
-        renderGrid();
+        renderMain();
       });
     });
-    $("qInput").addEventListener("input", debounce(function () { state.q = $("qInput").value; renderGrid(); }, 150));
-    $("autorSel").addEventListener("change", function () { state.autor = $("autorSel").value; renderGrid(); });
+    var qInput = $("qInput");
+    if (qInput) qInput.addEventListener("input", debounce(function () { state.q = $("qInput").value; renderGrid(); }, 150));
+    var autorSel = $("autorSel");
+    if (autorSel) autorSel.addEventListener("change", function () { state.autor = $("autorSel").value; renderGrid(); });
 
     if (!loading) renderGrid();
     setupDrop($("main"));
@@ -483,6 +539,7 @@
   function renderGrid() {
     var wrap = $("gridWrap");
     if (!wrap) return;
+    if (state.tab === "tarea") return renderTareas(wrap);
     var items = filtered();
     if (!state.pubs.length) {
       wrap.innerHTML = '<div class="empty"><strong>' + esc(t("empty_title")) + "</strong>" + esc(t("empty_body")) + "</div>";
@@ -505,6 +562,7 @@
       var chips = [];
       if (p.sistema) chips.push(p.sistema);
       if (p.ubicacion && p.titulo) chips.push(p.ubicacion);
+      if (p.tipo === "plano" && p.asignado_a) chips.push(t("assigned_to", { who: personName(p.asignado) }));
       if (chips.length) {
         html += '<div class="chips">' + chips.map(function (c) { return '<span class="chip">' + esc(c) + "</span>"; }).join("") + "</div>";
       }
@@ -517,6 +575,79 @@
         var p = state.pubs.find(function (x) { return x.id === c.getAttribute("data-id"); });
         if (p) openViewer(p);
       });
+    });
+  }
+
+  function canEditTarea(tarea) {
+    return !!(state.me && (isAdmin() || tarea.asignado_a === state.me.id));
+  }
+
+  function renderTareas(wrap) {
+    if (!state.tareas.length) {
+      wrap.innerHTML = '<div class="empty"><strong>' + esc(t("no_tareas")) + "</strong></div>";
+      return;
+    }
+    var html = '<div class="grid">';
+    state.tareas.forEach(function (x) {
+      var done = x.estado === "hecho";
+      html += '<div class="card" data-id="' + x.id + '" style="cursor:default"><div class="body">';
+      html += '<div class="title">' + esc(x.titulo) + '<span class="badge ' + (done ? "foto" : "plano") + '">' + esc(done ? t("done") : t("pending_task")) + "</span></div>";
+      if (x.descripcion) html += '<div class="meta">' + esc(x.descripcion) + "</div>";
+      html += '<div class="meta">' + esc(t("assigned_to", { who: x.asignado ? personName(x.asignado) : t("unassigned") })) + " · " + esc(fmtDate(x.creado)) + "</div>";
+      html += '<div class="row" style="margin-top:8px">';
+      if (canEditTarea(x)) {
+        html += '<button type="button" class="btn sm" data-toggle="' + x.id + '">' + esc(done ? t("mark_pending") : t("mark_done")) + "</button>";
+      }
+      if (isAdmin()) html += '<button type="button" class="btn sm danger" data-del="' + x.id + '">' + esc(t("delete")) + "</button>";
+      html += "</div></div></div>";
+    });
+    html += "</div>";
+    wrap.innerHTML = html;
+    wrap.querySelectorAll("[data-toggle]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var x = state.tareas.find(function (r) { return r.id === b.getAttribute("data-toggle"); });
+        if (!x) return;
+        Team.actualizarTarea(x.id, { estado: x.estado === "hecho" ? "pendiente" : "hecho" })
+          .then(loadTareas)
+          .catch(function (err) { toast(errMsg(err)); });
+      });
+    });
+    wrap.querySelectorAll("[data-del]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (!confirm(t("delete_confirm"))) return;
+        Team.borrarTarea(b.getAttribute("data-del"))
+          .then(loadTareas)
+          .catch(function (err) { toast(errMsg(err)); });
+      });
+    });
+  }
+
+  function openNewTarea() {
+    var members = state.members;
+    var d = dialog(
+      "<h2>" + esc(t("new_tarea").replace("+ ", "")) + "</h2>" +
+      '<form id="ntForm"><label class="field"><span>' + esc(t("t_titulo")) + '</span><input class="input" id="ntTitulo" required maxlength="200" placeholder="' + esc(t("t_titulo_ph")) + '"></label>' +
+      '<label class="field"><span>' + esc(t("t_desc")) + '</span><textarea class="input" id="ntDesc" maxlength="2000"></textarea></label>' +
+      '<label class="field"><span>' + esc(t("t_asignar")) + '</span><select class="input" id="ntAsignado"><option value="">' + esc(t("unassigned")) + "</option>" +
+      members.map(function (m) { return '<option value="' + m.user_id + '">' + esc(personName(m.perfil)) + "</option>"; }).join("") +
+      "</select></label>" +
+      '<div class="row"><button type="button" class="btn" id="ntCancel">' + esc(t("cancel")) + '</button><button class="btn primary" id="ntOk">' + esc(t("create")) + "</button></div></form>"
+    );
+    d.q("#ntTitulo").focus();
+    d.q("#ntCancel").addEventListener("click", d.close);
+    d.q("#ntForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      d.q("#ntOk").disabled = true;
+      Team.crearTarea(state.obraId, d.q("#ntTitulo").value.trim(), d.q("#ntDesc").value.trim(), d.q("#ntAsignado").value || null)
+        .then(function () {
+          d.close();
+          toast(t("tarea_created"));
+          loadTareas();
+        })
+        .catch(function (err) {
+          d.q("#ntOk").disabled = false;
+          toast(errMsg(err));
+        });
     });
   }
 
@@ -540,6 +671,13 @@
       (p.nota ? "<dt>" + esc(t("note")) + "</dt><dd>" + esc(p.nota) + "</dd>" : "") +
       "<dt>" + esc(t("by")) + "</dt><dd>" + esc(personName(p.autor)) + (p.autor && p.autor.email ? "<br><small>" + esc(p.autor.email) + "</small>" : "") + "</dd>" +
       "<dt>" + esc(t("date")) + "</dt><dd>" + esc(fmtDate(p.creado)) + "</dd>" +
+      (p.tipo === "plano"
+        ? isAdmin()
+          ? '<dt>' + esc(t("t_asignar")) + '</dt><dd><select class="input" id="vAsignado" style="max-width:220px"><option value="">' + esc(t("unassigned")) + "</option>" +
+            state.members.map(function (m) { return '<option value="' + m.user_id + '"' + (p.asignado_a === m.user_id ? " selected" : "") + ">" + esc(personName(m.perfil)) + "</option>"; }).join("") +
+            "</select></dd>"
+          : p.asignado_a ? "<dt>" + esc(t("t_asignar")) + "</dt><dd>" + esc(personName(p.asignado)) + "</dd>" : ""
+        : "") +
       "</dl></div>";
     document.body.appendChild(v);
     document.body.style.overflow = "hidden";
@@ -591,6 +729,23 @@
             loadPubs();
           })
           .catch(function (err) { toast(errMsg(err)); });
+      });
+    }
+
+    var vAsignado = v.querySelector("#vAsignado");
+    if (vAsignado) {
+      vAsignado.addEventListener("change", function () {
+        var val = vAsignado.value || null;
+        vAsignado.disabled = true;
+        Team.asignarPublicacion(p.id, val)
+          .then(function () {
+            p.asignado_a = val;
+            loadPubs();
+          })
+          .catch(function (err) {
+            toast(errMsg(err));
+            vAsignado.disabled = false;
+          });
       });
     }
   }
