@@ -614,13 +614,15 @@
     });
     wrap.querySelectorAll("[data-del]").forEach(function (b) {
       b.addEventListener("click", function () {
-        if (!confirm(t("delete_confirm"))) return;
-        Team.borrarTarea(b.getAttribute("data-del"))
-          .then(function () {
-            toast(t("deleted"));
-            return loadTareas();
-          })
-          .catch(function (err) { toast(errMsg(err)); });
+        confirmDialog(t("delete_confirm"), t("delete")).then(function (ok) {
+          if (!ok) return;
+          return Team.borrarTarea(b.getAttribute("data-del"))
+            .then(function () {
+              toast(t("deleted"));
+              return loadTareas();
+            })
+            .catch(function (err) { toast(errMsg(err)); });
+        });
       });
     });
   }
@@ -724,14 +726,16 @@
 
     if (canDelete) {
       v.querySelector("#vDel").addEventListener("click", function () {
-        if (!confirm(t("delete_confirm"))) return;
-        Team.borrarPublicacion(p)
-          .then(function () {
-            close();
-            toast(t("deleted"));
-            loadPubs();
-          })
-          .catch(function (err) { toast(errMsg(err)); });
+        confirmDialog(t("delete_confirm"), t("delete")).then(function (ok) {
+          if (!ok) return;
+          Team.borrarPublicacion(p)
+            .then(function () {
+              close();
+              toast(t("deleted"));
+              loadPubs();
+            })
+            .catch(function (err) { toast(errMsg(err)); });
+        });
       });
     }
 
@@ -764,6 +768,35 @@
     document.addEventListener("keydown", onKey);
     ov.addEventListener("mousedown", function (e) { if (e.target === ov) close(); });
     return { el: ov, close: close, q: function (s) { return ov.querySelector(s); } };
+  }
+
+  // In-app confirm dialog — a native confirm() can be silently suppressed
+  // by the browser (e.g. after "prevent this page from creating more
+  // dialogs"), which would make a destructive action look like it does
+  // nothing at all. This can't be blocked that way.
+  function confirmDialog(msg, okLabel) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var d = dialog(
+        '<p class="lead" style="margin-top:0">' + esc(msg) + "</p>" +
+        '<div class="row"><button type="button" class="btn" id="cfNo">' + esc(t("cancel")) + '</button>' +
+        '<button type="button" class="btn primary danger" id="cfYes">' + esc(okLabel) + "</button></div>"
+      );
+      function finish(v) {
+        if (done) return;
+        done = true;
+        d.close();
+        resolve(v);
+      }
+      d.q("#cfNo").addEventListener("click", function () { finish(false); });
+      d.q("#cfYes").addEventListener("click", function () { finish(true); });
+      d.el.addEventListener("mousedown", function (e) { if (e.target === d.el) finish(false); });
+      document.addEventListener("keydown", function onEsc(e) {
+        if (e.key !== "Escape") return;
+        document.removeEventListener("keydown", onEsc);
+        finish(false);
+      });
+    });
   }
 
   function openNewObra() {
@@ -906,14 +939,16 @@
     );
     d.q("#memClose").addEventListener("click", d.close);
     d.q("#leaveBtn").addEventListener("click", function () {
-      if (!confirm(t("leave_confirm"))) return;
-      Team.quitarMiembro(o.id, state.me.id)
-        .then(function () {
-          d.close();
-          state.obraId = null;
-          return loadObras();
-        })
-        .catch(function (err) { toast(errMsg(err)); });
+      confirmDialog(t("leave_confirm"), t("leave")).then(function (ok) {
+        if (!ok) return;
+        Team.quitarMiembro(o.id, state.me.id)
+          .then(function () {
+            d.close();
+            state.obraId = null;
+            return loadObras();
+          })
+          .catch(function (err) { toast(errMsg(err)); });
+      });
     });
 
     function load() {
@@ -947,8 +982,10 @@
           });
           d.el.querySelectorAll("[data-rm]").forEach(function (b) {
             b.addEventListener("click", function () {
-              if (!confirm(t("remove_confirm"))) return;
-              Team.quitarMiembro(o.id, b.getAttribute("data-rm")).then(load, function (err) { toast(errMsg(err)); });
+              confirmDialog(t("remove_confirm"), t("remove")).then(function (ok) {
+                if (!ok) return;
+                Team.quitarMiembro(o.id, b.getAttribute("data-rm")).then(load, function (err) { toast(errMsg(err)); });
+              });
             });
           });
           d.el.querySelectorAll("[data-rminv]").forEach(function (b) {
