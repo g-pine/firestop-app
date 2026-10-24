@@ -589,3 +589,54 @@ body {
   margin-top: 28px;
   line-height: 1.5;
 }
+
+/* ---------- Obra · Equipo ---------- */
+.btn-capture:disabled { opacity: 0.6; }
+.btn-secondary {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.team-actions { display: grid; gap: 0; margin-bottom: 8px; }
+.team-actions .btn-capture { margin: 6px 0; }
+.team-link {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 0;
+  text-align: center;
+  text-decoration: none;
+}
+.team-footer { margin-top: 26px; border-top: 1px solid var(--border); padding-top: 8px; }
+.team-who { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 4px; }
+.team-msg { padding: 10px 12px; border-radius: 10px; font-size: 13.5px; margin-bottom: 12px; line-height: 1.4; }
+.team-msg.err { background: rgba(216, 30, 44, 0.16); color: #ff9c94; }
+:root[data-theme="light"] .team-msg.err { color: #a3141f; }
+.team-msg.ok { background: rgba(62, 163, 107, 0.18); }
+.team-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(224, 164, 0, 0.14);
+  border: 1px solid rgba(224, 164, 0, 0.4);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.team-pending span { flex: 1; }
+.team-pending .chip { padding: 7px 12px; font-size: 13px; }
+.team-obra-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.note-box .search-box { margin-bottom: 8px; font-size: 15px; padding: 10px 12px; }

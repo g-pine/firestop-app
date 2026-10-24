@@ -1,4 +1,4 @@
-var CACHE_NAME = "firestop-finder-v10";
+var CACHE_NAME = "firestop-finder-v11";
 
 // Data/icons: large or rarely-changing, safe to precache at install and
 // serve cache-first (with background revalidation).
@@ -7,12 +7,13 @@ var DATA_ASSETS = [
   "data/products.json",
   "icons/icon-192.png",
   "icons/icon-512.png",
+  "vendor/supabase.js",
 ];
 
 // App shell: always served network-first (falling back to cache only when
 // offline) so a code update is never stuck behind a stale cached copy that
 // was baked in during a slow/propagating deploy.
-var SHELL_NAMES = ["index.html", "app.js", "styles.css", "i18n.js", "db.js", "manifest.json"];
+var SHELL_NAMES = ["index.html", "app.js", "styles.css", "i18n.js", "db.js", "manifest.json", "team.js", "team-app.js", "equipo.js"];
 
 function isShellRequest(request) {
   if (request.mode === "navigate") return true;
@@ -52,6 +53,9 @@ self.addEventListener("activate", function (event) {
 self.addEventListener("fetch", function (event) {
   if (event.request.method !== "GET") return;
   var request = event.request;
+  // Never cache other sites (the team server, signed file links): the app
+  // keeps its own offline copies of drawings and lists.
+  if (new URL(request.url).origin !== self.location.origin) return;
 
   if (isShellRequest(request)) {
     event.respondWith(

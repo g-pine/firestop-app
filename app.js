@@ -159,6 +159,7 @@
     html += optionCard("search", { label: I18N.t("home_search_label"), sub: I18N.t("home_search_sub") });
     html += optionCard("photosHome", { label: I18N.t("home_photos_label"), sub: I18N.t("home_photos_sub") });
     html += optionCard("plansHome", { label: I18N.t("home_plans_label"), sub: I18N.t("home_plans_sub") });
+    if (window.TeamApp) html += optionCard("teamHome", { label: TeamApp.t("home_label"), sub: TeamApp.homeSub() });
     html += "</div>";
     html += '<p class="footer-note">' + escapeHtml(I18N.t("home_footer", { n: DATA.length })) + "</p>";
     appEl.innerHTML = html;
@@ -170,6 +171,7 @@
     bindOptionCard("search", function () { go("search", {}); });
     bindOptionCard("photosHome", function () { go("photos", {}); });
     bindOptionCard("plansHome", function () { go("plans", {}); });
+    bindOptionCard("teamHome", function () { go("teamHome", {}); });
   };
 
   screens.products = function () {
@@ -379,6 +381,9 @@
 
     html += '<div class="section-title">' + escapeHtml(I18N.t("photos_section_title")) + "</div>";
     html += '<button class="btn-capture" id="capBtn">' + escapeHtml(I18N.t("photos_add_button")) + "</button>";
+    if (window.TeamApp && TeamApp.hasObra()) {
+      html += '<button class="btn-capture btn-secondary" id="teamCapBtn">' + escapeHtml(TeamApp.t("publish_for_system")) + "</button>";
+    }
     html += '<div id="captureArea"></div>';
     html += '<div id="photoGrid"></div>';
 
@@ -407,6 +412,10 @@
     document.getElementById("capBtn").addEventListener("click", function () {
       startCapture("captureArea", sys.code, reloadPhotos);
     });
+    var teamCapBtn = document.getElementById("teamCapBtn");
+    if (teamCapBtn) {
+      teamCapBtn.addEventListener("click", function () { TeamApp.capturePhoto("captureArea", sys.code); });
+    }
 
     var favBtn = document.getElementById("favBtn");
     favBtn.addEventListener("click", function () {
@@ -792,6 +801,21 @@
     screens[top.name](top.params);
     window.scrollTo(0, 0);
   }
+
+  // Let the team module (team-app.js) add its own screens.
+  window.FirestopApp = {
+    screens: screens,
+    go: go,
+    goBack: goBack,
+    render: render,
+    current: function () { return stack[stack.length - 1]; },
+    appEl: appEl,
+    titleEl: titleEl,
+    backBtn: backBtn,
+    escapeHtml: escapeHtml,
+    optionCard: optionCard,
+    bindOptionCard: bindOptionCard,
+  };
 
   // ---------- boot ----------
   applyTheme();
