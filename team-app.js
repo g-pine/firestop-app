@@ -389,7 +389,7 @@ var TeamApp = (function () {
     renderList(!navigator.onLine && cached);
     loadPubs(o.id);
     loadTareas(o.id);
-    if (navigator.onLine) Team.miembros(o.id).then(function (rows) { members = rows; }, function () {});
+    if (navigator.onLine) Team.todosLosUsuarios().then(function (rows) { members = rows; }, function () {});
     subscribe(o.id);
   }
 
@@ -566,7 +566,7 @@ var TeamApp = (function () {
     var container = document.getElementById(containerId);
     if (!container) return;
     var opts = '<option value="">' + esc(t("unassigned")) + "</option>" +
-      members.map(function (m) { return '<option value="' + esc(m.user_id) + '">' + esc(personName(m.perfil)) + "</option>"; }).join("");
+      members.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(personName(m)) + "</option>"; }).join("");
     container.innerHTML =
       '<div class="note-box">' +
       '<input class="search-box" id="tkTitulo" placeholder="' + esc(t("tarea_titulo")) + '">' +
@@ -618,7 +618,7 @@ var TeamApp = (function () {
         if (isAdmin()) {
           var opts = '<option value="">' + esc(t("unassigned")) + "</option>" +
             members.map(function (m) {
-              return '<option value="' + esc(m.user_id) + '"' + (p.asignado_a === m.user_id ? " selected" : "") + ">" + esc(personName(m.perfil)) + "</option>";
+              return '<option value="' + esc(m.id) + '"' + (p.asignado_a === m.id ? " selected" : "") + ">" + esc(personName(m)) + "</option>";
             }).join("");
           html += '<label class="sub" style="display:block;margin:10px 0 4px;">' + esc(t("tarea_asignar")) + '</label>';
           html += '<select class="search-box" id="tpAsignado">' + opts + "</select>";
@@ -632,9 +632,9 @@ var TeamApp = (function () {
         var asigSel = document.getElementById("tpAsignado");
         if (asigSel) asigSel.addEventListener("change", function () {
           var val = asigSel.value || null;
-          Team.asignarPublicacion(p.id, val).then(function () {
+          Team.asignarPublicacion(p.id, p.obra_id, val).then(function () {
             p.asignado_a = val;
-            p.asignado = val ? (members.find(function (m) { return m.user_id === val; }) || {}).perfil : null;
+            p.asignado = val ? members.find(function (m) { return m.id === val; }) || null : null;
             var i = pubs.findIndex(function (x) { return x.id === p.id; });
             if (i !== -1) pubs[i] = p;
           }, function (err) { alert(errMsg(err)); });

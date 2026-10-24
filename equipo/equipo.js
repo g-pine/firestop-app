@@ -420,7 +420,7 @@
     renderMain(true);
     loadPubs();
     loadTareas();
-    Team.miembros(id).then(function (rows) { state.members = rows; }, function () {});
+    Team.todosLosUsuarios().then(function (rows) { state.members = rows; }, function () {});
     var reloadSoon = debounce(loadPubs, 400);
     state.unsub = Team.suscribir(id, reloadSoon);
   }
@@ -629,7 +629,7 @@
       '<form id="ntForm"><label class="field"><span>' + esc(t("t_titulo")) + '</span><input class="input" id="ntTitulo" required maxlength="200" placeholder="' + esc(t("t_titulo_ph")) + '"></label>' +
       '<label class="field"><span>' + esc(t("t_desc")) + '</span><textarea class="input" id="ntDesc" maxlength="2000"></textarea></label>' +
       '<label class="field"><span>' + esc(t("t_asignar")) + '</span><select class="input" id="ntAsignado"><option value="">' + esc(t("unassigned")) + "</option>" +
-      members.map(function (m) { return '<option value="' + m.user_id + '">' + esc(personName(m.perfil)) + "</option>"; }).join("") +
+      members.map(function (m) { return '<option value="' + m.id + '">' + esc(personName(m)) + "</option>"; }).join("") +
       "</select></label>" +
       '<div class="row"><button type="button" class="btn" id="ntCancel">' + esc(t("cancel")) + '</button><button class="btn primary" id="ntOk">' + esc(t("create")) + "</button></div></form>"
     );
@@ -674,7 +674,7 @@
       (p.tipo === "plano"
         ? isAdmin()
           ? '<dt>' + esc(t("t_asignar")) + '</dt><dd><select class="input" id="vAsignado" style="max-width:220px"><option value="">' + esc(t("unassigned")) + "</option>" +
-            state.members.map(function (m) { return '<option value="' + m.user_id + '"' + (p.asignado_a === m.user_id ? " selected" : "") + ">" + esc(personName(m.perfil)) + "</option>"; }).join("") +
+            state.members.map(function (m) { return '<option value="' + m.id + '"' + (p.asignado_a === m.id ? " selected" : "") + ">" + esc(personName(m)) + "</option>"; }).join("") +
             "</select></dd>"
           : p.asignado_a ? "<dt>" + esc(t("t_asignar")) + "</dt><dd>" + esc(personName(p.asignado)) + "</dd>" : ""
         : "") +
@@ -737,7 +737,7 @@
       vAsignado.addEventListener("change", function () {
         var val = vAsignado.value || null;
         vAsignado.disabled = true;
-        Team.asignarPublicacion(p.id, val)
+        Team.asignarPublicacion(p.id, p.obra_id, val)
           .then(function () {
             p.asignado_a = val;
             loadPubs();

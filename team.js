@@ -150,6 +150,25 @@ var Team = (function () {
       .then(check);
   }
 
+  // Every signed-up user, for an admin to pick from when assigning a task
+  // or plan — not just people already invited into this particular obra.
+  // RLS only returns the full list to admins; everyone else gets back just
+  // themselves and their own obra co-members.
+  function todosLosUsuarios() {
+    return client.from("perfiles").select("id,nombre,email").order("nombre", { ascending: true }).then(check);
+  }
+
+  // Add a user straight into an obra as a regular member, so an admin can
+  // assign them work without going through the email-invitation flow.
+  // Silently a no-op if they're already a member.
+  function asegurarMiembro(obraId, userId) {
+    if (!userId) return Promise.resolve();
+    return client
+      .from("obra_miembros")
+      .upsert({ obra_id: obraId, user_id: userId, rol: "miembro" }, { onConflict: "obra_id,user_id", ignoreDuplicates: true })
+      .then(check);
+  }
+
   function invitaciones(obraId) {
     return client.from("invitaciones").select("email,rol,creado").eq("obra_id", obraId).then(check);
   }
@@ -192,8 +211,10 @@ var Team = (function () {
       });
   }
 
-  function asignarPublicacion(pubId, userId) {
-    return client.from("publicaciones").update({ asignado_a: userId || null }).eq("id", pubId).then(check);
+  function asignarPublicacion(pubId, obraId, userId) {
+    return asegurarMiembro(obraId, userId).then(function () {
+      return client.from("publicaciones").update({ asignado_a: userId || null }).eq("id", pubId).then(check);
+    });
   }
 
   // ---------- tareas (free-text tasks, optionally assigned) ----------
@@ -212,12 +233,14 @@ var Team = (function () {
 
   function crearTarea(obraId, titulo, descripcion, asignadoA) {
     return getSession().then(function (s) {
-      return client
-        .from("tareas")
-        .insert({ obra_id: obraId, titulo: titulo, descripcion: descripcion || null, asignado_a: asignadoA || null, creado_por: s.user.id })
-        .select()
-        .single()
-        .then(check);
+      return asegurarMiembro(obraId, asignadoA).then(function () {
+        return client
+          .from("tareas")
+          .insert({ obra_id: obraId, titulo: titulo, descripcion: descripcion || null, asignado_a: asignadoA || null, creado_por: s.user.id })
+          .select()
+          .single()
+          .then(check);
+      });
     });
   }
 
@@ -488,6 +511,7 @@ var Team = (function () {
     getObraId: getObraId,
     setObraId: setObraId,
     miembros: miembros,
+    todosLosUsuarios: todosLosUsuarios,
     invitaciones: invitaciones,
     invitar: invitar,
     quitarInvitacion: quitarInvitacion,
