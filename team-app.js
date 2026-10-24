@@ -65,6 +65,22 @@ var TeamApp = (function () {
       cached_list: "Mostrando la última copia guardada (sin señal).",
       publish_for_system: "Publicar foto en la obra",
       signed_as: "Conectado como {who}",
+      tareas: "Tareas",
+      no_tareas: "No hay tareas en esta obra todavía.",
+      mine_only: "Asignado a mí",
+      new_tarea: "+ Nueva tarea",
+      tarea_titulo: "Título de la tarea",
+      tarea_desc: "Descripción (opcional)",
+      tarea_asignar: "Asignar a",
+      unassigned: "Sin asignar",
+      assigned_to: "Asignado a {who}",
+      create: "Crear",
+      done: "Hecho",
+      pending_task: "Pendiente",
+      mark_done: "Marcar como hecho",
+      mark_pending: "Marcar como pendiente",
+      tarea_created: "Tarea creada.",
+      admin_only_note: "Solo un admin de la obra puede crear tareas.",
     },
     en: {
       home_label: "Job site · Team",
@@ -123,6 +139,22 @@ var TeamApp = (function () {
       cached_list: "Showing the last saved copy (no signal).",
       publish_for_system: "Post photo to job site",
       signed_as: "Signed in as {who}",
+      tareas: "Tasks",
+      no_tareas: "No tasks on this job site yet.",
+      mine_only: "Assigned to me",
+      new_tarea: "+ New task",
+      tarea_titulo: "Task title",
+      tarea_desc: "Description (optional)",
+      tarea_asignar: "Assign to",
+      unassigned: "Unassigned",
+      assigned_to: "Assigned to {who}",
+      create: "Create",
+      done: "Done",
+      pending_task: "Pending",
+      mark_done: "Mark as done",
+      mark_pending: "Mark as pending",
+      tarea_created: "Task created.",
+      admin_only_note: "Only an obra admin can create tasks.",
     },
   };
 
@@ -141,11 +173,19 @@ var TeamApp = (function () {
   var session = null;
   var obras = Team.cacheGet("obras") || [];
   var pubs = [];
+  var tareas = [];
+  var members = [];
   var urls = {};
   var tab = "plano";
+  var soloMias = false;
   var unsub = null;
   var subscribedObra = null;
   var pendingCount = 0;
+
+  function isAdmin() {
+    var o = obraActual();
+    return !!(o && o.rol === "admin");
+  }
 
   function obraActual() {
     var id = Team.getObraId();
@@ -308,22 +348,33 @@ var TeamApp = (function () {
     html += '<div class="team-actions">';
     html += '<button class="btn-capture" id="tmPhoto">' + esc(t("take_photo")) + "</button>";
     html += '<button class="btn-capture btn-secondary" id="tmPlan">' + esc(t("upload_plan")) + "</button>";
+    if (o.rol === "admin") html += '<button class="btn-capture btn-secondary" id="tmNewTarea">' + esc(t("new_tarea")) + "</button>";
     html += "</div>";
     html += '<div id="captureArea"></div>';
     html += '<div class="rating-row" id="tmTabs">';
     html += '<button class="chip" data-tab="plano" aria-pressed="' + (tab === "plano") + '">' + esc(t("planos")) + "</button>";
     html += '<button class="chip" data-tab="foto" aria-pressed="' + (tab === "foto") + '">' + esc(t("fotos")) + "</button>";
+    html += '<button class="chip" data-tab="tarea" aria-pressed="' + (tab === "tarea") + '">' + esc(t("tareas")) + "</button>";
     html += "</div>";
+    html += '<div class="rating-row" id="tmFilters"><button class="chip" id="tmMine" aria-pressed="' + soloMias + '">' + esc(t("mine_only")) + "</button></div>";
     html += '<div id="tmList"></div>';
     html += footerHtml();
     A.appEl.innerHTML = html;
 
     document.getElementById("tmPhoto").addEventListener("click", function () { capturePhoto("captureArea", null); });
     document.getElementById("tmPlan").addEventListener("click", pickPlan);
+    var newTareaBtn = document.getElementById("tmNewTarea");
+    if (newTareaBtn) newTareaBtn.addEventListener("click", function () { renderTareaForm("captureArea"); });
+    document.getElementById("tmMine").addEventListener("click", function () {
+      soloMias = !soloMias;
+      document.getElementById("tmMine").setAttribute("aria-pressed", soloMias);
+      renderList();
+    });
     document.querySelectorAll("#tmTabs .chip").forEach(function (b) {
       b.addEventListener("click", function () {
         tab = b.getAttribute("data-tab");
         document.querySelectorAll("#tmTabs .chip").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+        if (tab === "tarea" && !tareas.length) loadTareas(o.id);
         renderList();
       });
     });
@@ -333,9 +384,22 @@ var TeamApp = (function () {
     // Show the cached copy immediately, then refresh from the server.
     var cached = Team.cacheGet("pubs-" + o.id);
     if (cached && !pubs.length) pubs = cached;
+    var cachedTareas = Team.cacheGet("tareas-" + o.id);
+    if (cachedTareas && !tareas.length) tareas = cachedTareas;
     renderList(!navigator.onLine && cached);
     loadPubs(o.id);
+    loadTareas(o.id);
+    if (navigator.onLine) Team.miembros(o.id).then(function (rows) { members = rows; }, function () {});
     subscribe(o.id);
+  }
+
+  function loadTareas(obraId) {
+    if (!navigator.onLine) return Promise.resolve();
+    return Team.listTareas(obraId).then(function (rows) {
+      if (Team.getObraId() !== obraId) return;
+      tareas = rows;
+      if (onTeamScreen() && tab === "tarea") renderList();
+    }, function () {});
   }
 
   function subscribe(obraId) {
@@ -380,7 +444,13 @@ var TeamApp = (function () {
   function renderList(showingCached) {
     var el = document.getElementById("tmList");
     if (!el) return;
+    var filtersEl = document.getElementById("tmFilters");
+    if (filtersEl) filtersEl.style.display = tab === "foto" ? "none" : "";
+
+    if (tab === "tarea") return renderTareas(el);
+
     var items = pubs.filter(function (p) { return p.tipo === tab; });
+    if (tab === "plano" && soloMias && session) items = items.filter(function (p) { return p.asignado_a === session.user.id; });
     var html = showingCached ? '<p class="page-note">' + esc(t("cached_list")) + "</p>" : "";
     if (!items.length) {
       el.innerHTML = html + '<div class="empty-state">' + esc(t(tab === "plano" ? "no_planos" : "no_fotos")) + "</div>";
@@ -391,7 +461,9 @@ var TeamApp = (function () {
       items.forEach(function (p) {
         html += '<button class="option-card" data-pub="' + p.id + '">' + esc(p.titulo || t("planos")) +
           '<span class="sub">' + esc(t("by", { who: personName(p.autor), when: fmtDate(p.creado) })) +
-          (p.ubicacion ? " · " + esc(p.ubicacion) : "") + '<span class="tm-off" data-off="' + esc(p.archivo) + '"></span></span></button>';
+          (p.ubicacion ? " · " + esc(p.ubicacion) : "") +
+          (p.asignado ? " · " + esc(t("assigned_to", { who: personName(p.asignado) })) : "") +
+          '<span class="tm-off" data-off="' + esc(p.archivo) + '"></span></span></button>';
       });
       html += "</div>";
       el.innerHTML = html;
@@ -427,6 +499,99 @@ var TeamApp = (function () {
     });
   }
 
+  function canEditTarea(tarea) {
+    return session && (isAdmin() || tarea.asignado_a === session.user.id);
+  }
+
+  function renderTareas(el) {
+    var items = tareas.slice();
+    if (soloMias && session) items = items.filter(function (x) { return x.asignado_a === session.user.id; });
+    if (!items.length) {
+      el.innerHTML = '<div class="empty-state">' + esc(t("no_tareas")) + "</div>";
+      return;
+    }
+    var html = '<div class="option-grid">';
+    items.forEach(function (x) {
+      var status = x.estado === "hecho" ? t("done") : t("pending_task");
+      html +=
+        '<div class="option-card tm-tarea" data-tarea="' + x.id + '">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
+        '<span>' + esc(x.titulo) + "</span>" +
+        '<span class="tag' + (x.estado === "hecho" ? " f" : "") + '">' + esc(status) + "</span>" +
+        "</div>" +
+        '<span class="sub">' + esc(t("assigned_to", { who: x.asignado ? personName(x.asignado) : t("unassigned") })) + "</span>" +
+        (x.descripcion ? '<span class="sub">' + esc(x.descripcion) + "</span>" : "") +
+        "</div>";
+    });
+    html += "</div>";
+    el.innerHTML = html;
+    items.forEach(function (x) {
+      var card = el.querySelector('[data-tarea="' + cssEsc(x.id) + '"]');
+      if (!card || !canEditTarea(x)) return;
+      card.style.cursor = "pointer";
+      card.addEventListener("click", function () {
+        var next = x.estado === "hecho" ? "pendiente" : "hecho";
+        card.style.opacity = "0.6";
+        Team.actualizarTarea(x.id, { estado: next }).then(function (updated) {
+          var i = tareas.findIndex(function (y) { return y.id === x.id; });
+          if (i !== -1) tareas[i] = Object.assign({}, tareas[i], updated);
+          if (onTeamScreen() && tab === "tarea") renderList();
+        }, function (err) {
+          card.style.opacity = "";
+          alert(errMsg(err));
+        });
+      });
+    });
+    if (isAdmin()) {
+      items.forEach(function (x) {
+        var card = el.querySelector('[data-tarea="' + cssEsc(x.id) + '"]');
+        if (!card) return;
+        var del = document.createElement("button");
+        del.className = "team-link";
+        del.textContent = t("delete");
+        del.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (!confirm(t("delete_confirm"))) return;
+          Team.borrarTarea(x.id).then(function () {
+            tareas = tareas.filter(function (y) { return y.id !== x.id; });
+            if (onTeamScreen() && tab === "tarea") renderList();
+          }, function (err) { alert(errMsg(err)); });
+        });
+        card.appendChild(del);
+      });
+    }
+  }
+
+  function renderTareaForm(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var opts = '<option value="">' + esc(t("unassigned")) + "</option>" +
+      members.map(function (m) { return '<option value="' + esc(m.user_id) + '">' + esc(personName(m.perfil)) + "</option>"; }).join("");
+    container.innerHTML =
+      '<div class="note-box">' +
+      '<input class="search-box" id="tkTitulo" placeholder="' + esc(t("tarea_titulo")) + '">' +
+      '<textarea class="search-box" id="tkDesc" placeholder="' + esc(t("tarea_desc")) + '" style="min-height:60px;"></textarea>' +
+      '<label class="sub" style="display:block;margin:6px 0 4px;">' + esc(t("tarea_asignar")) + '</label>' +
+      '<select class="search-box" id="tkAsignado">' + opts + "</select>" +
+      '<div class="note-actions">' +
+      '<button id="tkCancel">' + esc(t("cancel")) + "</button>" +
+      '<button id="tkSave" class="primary">' + esc(t("create")) + "</button>" +
+      "</div></div>";
+    document.getElementById("tkCancel").addEventListener("click", function () { container.innerHTML = ""; });
+    document.getElementById("tkSave").addEventListener("click", function () {
+      var titulo = document.getElementById("tkTitulo").value.trim();
+      if (!titulo) return;
+      var desc = document.getElementById("tkDesc").value.trim();
+      var asignado = document.getElementById("tkAsignado").value || null;
+      var o = obraActual();
+      Team.crearTarea(o.id, titulo, desc, asignado).then(function () {
+        container.innerHTML = "";
+        tab = "tarea";
+        loadTareas(o.id).then(function () { if (onTeamScreen()) A.render(); });
+      }, function (err) { alert(errMsg(err)); });
+    });
+  }
+
   function cssEsc(s) { return window.CSS && CSS.escape ? CSS.escape(s) : s.replace(/"/g, '\\"'); }
 
   function canDelete(p) {
@@ -450,10 +615,30 @@ var TeamApp = (function () {
         html += '<p class="page-note">' + esc(t("by", { who: personName(p.autor), when: fmtDate(p.creado) })) + "</p>";
         if (p.ubicacion) html += '<p class="page-note">' + esc(p.ubicacion) + "</p>";
         if (p.nota) html += '<div class="detail-text" style="font-family:inherit">' + esc(p.nota) + "</div>";
+        if (isAdmin()) {
+          var opts = '<option value="">' + esc(t("unassigned")) + "</option>" +
+            members.map(function (m) {
+              return '<option value="' + esc(m.user_id) + '"' + (p.asignado_a === m.user_id ? " selected" : "") + ">" + esc(personName(m.perfil)) + "</option>";
+            }).join("");
+          html += '<label class="sub" style="display:block;margin:10px 0 4px;">' + esc(t("tarea_asignar")) + '</label>';
+          html += '<select class="search-box" id="tpAsignado">' + opts + "</select>";
+        } else if (p.asignado_a) {
+          html += '<p class="page-note">' + esc(t("assigned_to", { who: personName(p.asignado) })) + "</p>";
+        }
         html += '<div class="note-actions"><button id="tpShare">' + esc(t("share")) + "</button>" +
           (canDelete(p) ? '<button id="tpDel" class="primary">' + esc(t("delete")) + "</button>" : "") + "</div>";
         A.appEl.innerHTML = html;
         document.getElementById("tpShare").addEventListener("click", function () { shareBlob(blob, fileName(p)); });
+        var asigSel = document.getElementById("tpAsignado");
+        if (asigSel) asigSel.addEventListener("change", function () {
+          var val = asigSel.value || null;
+          Team.asignarPublicacion(p.id, val).then(function () {
+            p.asignado_a = val;
+            p.asignado = val ? (members.find(function (m) { return m.user_id === val; }) || {}).perfil : null;
+            var i = pubs.findIndex(function (x) { return x.id === p.id; });
+            if (i !== -1) pubs[i] = p;
+          }, function (err) { alert(errMsg(err)); });
+        });
         var del = document.getElementById("tpDel");
         if (del) del.addEventListener("click", function () {
           if (!confirm(t("delete_confirm"))) return;

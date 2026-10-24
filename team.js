@@ -181,7 +181,7 @@ var Team = (function () {
   function listPublicaciones(obraId) {
     return client
       .from("publicaciones")
-      .select("id,obra_id,autor_id,tipo,titulo,nota,ubicacion,sistema,archivo,mime,creado,autor:perfiles(nombre,email)")
+      .select("id,obra_id,autor_id,tipo,titulo,nota,ubicacion,sistema,archivo,mime,creado,asignado_a,autor:perfiles!publicaciones_autor_id_fkey(nombre,email),asignado:perfiles!publicaciones_asignado_a_fkey(nombre,email)")
       .eq("obra_id", obraId)
       .order("creado", { ascending: false })
       .limit(500)
@@ -190,6 +190,43 @@ var Team = (function () {
         cacheSet("pubs-" + obraId, rows);
         return rows;
       });
+  }
+
+  function asignarPublicacion(pubId, userId) {
+    return client.from("publicaciones").update({ asignado_a: userId || null }).eq("id", pubId).then(check);
+  }
+
+  // ---------- tareas (free-text tasks, optionally assigned) ----------
+  function listTareas(obraId) {
+    return client
+      .from("tareas")
+      .select("id,obra_id,titulo,descripcion,estado,asignado_a,creado_por,creado,asignado:perfiles!tareas_asignado_a_fkey(nombre,email)")
+      .eq("obra_id", obraId)
+      .order("creado", { ascending: false })
+      .then(check)
+      .then(function (rows) {
+        cacheSet("tareas-" + obraId, rows);
+        return rows;
+      });
+  }
+
+  function crearTarea(obraId, titulo, descripcion, asignadoA) {
+    return getSession().then(function (s) {
+      return client
+        .from("tareas")
+        .insert({ obra_id: obraId, titulo: titulo, descripcion: descripcion || null, asignado_a: asignadoA || null, creado_por: s.user.id })
+        .select()
+        .single()
+        .then(check);
+    });
+  }
+
+  function actualizarTarea(id, changes) {
+    return client.from("tareas").update(changes).eq("id", id).select().single().then(check);
+  }
+
+  function borrarTarea(id) {
+    return client.from("tareas").delete().eq("id", id).then(check);
   }
 
   function signedUrls(paths) {
@@ -457,6 +494,11 @@ var Team = (function () {
     quitarMiembro: quitarMiembro,
     cambiarRol: cambiarRol,
     listPublicaciones: listPublicaciones,
+    asignarPublicacion: asignarPublicacion,
+    listTareas: listTareas,
+    crearTarea: crearTarea,
+    actualizarTarea: actualizarTarea,
+    borrarTarea: borrarTarea,
     signedUrls: signedUrls,
     publicar: publicar,
     pendientes: pendientes,
